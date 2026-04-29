@@ -1,4 +1,7 @@
-const MFAPI_BASE_URL = "MFAPI_BASE_URL";
+// const MFAPI_BASE_URL = "MFAPI_BASE_URL";
+const MFAPI_BASE_URL = process.env.MFAPI_BASE_URL;
+
+// console.log("MFAPI BASE URL:", MFAPI_BASE_URL);
 const DEFAULT_LIST_LIMIT = 12;
 const DEFAULT_SEARCH_LIMIT = 15;
 const DEFAULT_HISTORY_WINDOW_DAYS = 90;
@@ -52,7 +55,7 @@ const getDefaultRange = () => {
 };
 
 const buildMfApiUrl = (path, query = {}) => {
-  const url = new URL(path, MFAPI_BASE_URL);
+  const url = new URL(path, process.env.MFAPI_BASE_URL);
 
   Object.entries(query).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== "") {
