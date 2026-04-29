@@ -5,6 +5,7 @@ import Admin from "./pages/Admin"; // ✅ only once
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
+import MutualFunds from "./pages/MutualFunds";
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/mutual-funds" element={<MutualFunds />} />
       </Routes>
     </BrowserRouter>
   );
