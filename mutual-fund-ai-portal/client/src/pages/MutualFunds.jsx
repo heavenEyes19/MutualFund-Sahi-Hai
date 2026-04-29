@@ -6,6 +6,7 @@ import {
   searchMutualFunds,
 } from "../services/mutualFunds";
 
+
 const theme = {
   navy: "#0f4c81",
   blue: "#1a6fd4",
@@ -893,82 +894,6 @@ export default function MutualFunds() {
         rel="stylesheet"
       />
 
-      <nav
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 100,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 16,
-          padding: "18px 6%",
-          borderBottom: `1px solid ${theme.line}`,
-          background: "rgba(247,249,252,0.88)",
-          backdropFilter: "blur(14px)",
-          flexWrap: "wrap",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div
-            style={{
-              width: 30,
-              height: 30,
-              borderRadius: 10,
-              background: "linear-gradient(135deg, #0f4c81, #1a6fd4)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="M3 3v18h18" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" />
-              <path d="M7 16l4-5 4 3 5-6" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-          <div>
-            <p style={{ margin: 0, fontSize: 12, color: theme.softText, textTransform: "uppercase", letterSpacing: "0.08em" }}>
-              Mutual Fund Project
-            </p>
-            <p style={{ margin: "2px 0 0", fontSize: 17, fontWeight: 700 }}>
-              Mutual-Funds Sahi Hai
-            </p>
-          </div>
-        </div>
-
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <Link
-            to="/"
-            style={{
-              textDecoration: "none",
-              color: theme.blue,
-              padding: "10px 16px",
-              borderRadius: 12,
-              background: "#ffffff",
-              border: `1px solid ${theme.line}`,
-              fontSize: 14,
-              fontWeight: 600,
-            }}
-          >
-            Back to Home
-          </Link>
-          <Link
-            to="/dashboard"
-            style={{
-              textDecoration: "none",
-              color: "#ffffff",
-              padding: "10px 18px",
-              borderRadius: 12,
-              background: "linear-gradient(135deg, #0f4c81 0%, #1a6fd4 100%)",
-              boxShadow: "0 8px 18px rgba(26,111,212,0.24)",
-              fontSize: 14,
-              fontWeight: 700,
-            }}
-          >
-            Dashboard
-          </Link>
-        </div>
-      </nav>
 
       <section
         style={{
