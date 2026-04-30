@@ -126,7 +126,7 @@ async function getSummary(userMsg, fundsData) {
         messages: [
           {
             role: "system",
-            content: `Write a short 2-3 line summary that:
+            content: `Write all summary that:
 - Compares the funds clearly
 - Mentions which fund is better for what (growth, stability, etc.)
 - Uses qualitative reasoning (e.g. "higher growth", "more stable")
@@ -170,7 +170,7 @@ router.post("/chatbot", async (req, res) => {
     if (!fundNames.length) {
       return res.json({
         reply:
-          "I couldn't find any relevant mutual funds for that query. Try asking about specific funds or categories like 'HDFC', 'SBI Bluechip', or 'best long term funds'.",
+          "I couldn't find any relevant mutual funds for that query. Try asking about specific funds or categories like 'HDFC' or 'best long term funds'.",
         funds: [],
       });
     }
