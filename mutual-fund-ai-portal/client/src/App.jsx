@@ -10,7 +10,8 @@ import Navbar from "./components/Navbar";
 
 function App() {
 return ( <BrowserRouter>
-
+<>
+      <Navbar />
 
 
   <Routes>
@@ -21,6 +22,7 @@ return ( <BrowserRouter>
     <Route path="/admin" element={<Admin />} />
     <Route path="/mutual-funds" element={<MutualFunds />} />
   </Routes>
+  </>
 </BrowserRouter>
 
 );

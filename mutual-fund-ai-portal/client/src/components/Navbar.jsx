@@ -56,6 +56,7 @@ justifyContent: "center",
     <Link to="/guide" style={linkStyle}>Finance Guide</Link>
     <Link to="/chatbot" style={linkStyle}>AI Chatbot</Link>
     <Link to="/funds" style={linkStyle}>Funds</Link>
+    <Link to="/mutual-funds" style={linkStyle}>Stocks</Link>
     <Link to="/portfolio" style={linkStyle}>Portfolio</Link>
   </div>
 

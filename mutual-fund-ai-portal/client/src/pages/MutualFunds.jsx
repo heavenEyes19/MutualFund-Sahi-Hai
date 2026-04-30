@@ -5,7 +5,7 @@ import {
   listMutualFunds,
   searchMutualFunds,
 } from "../services/mutualFunds";
-
+import Navbar from '../components/Navbar';
 
 const theme = {
   navy: "#0f4c81",
