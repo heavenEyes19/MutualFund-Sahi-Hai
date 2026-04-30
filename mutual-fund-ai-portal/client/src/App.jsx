@@ -7,6 +7,7 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import MutualFunds from "./pages/MutualFunds";
 import Navbar from "./components/Navbar";
+import Chatbot from "./pages/Chatbot";
 
 function App() {
 return ( <BrowserRouter>
@@ -20,6 +21,7 @@ return ( <BrowserRouter>
     <Route path="/dashboard" element={<Dashboard />} />
     <Route path="/admin" element={<Admin />} />
     <Route path="/mutual-funds" element={<MutualFunds />} />
+    <Route path="/chatbot" element={<Chatbot />} />
   </Routes>
 </BrowserRouter>
 
