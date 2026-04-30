@@ -5,7 +5,7 @@ router.post("/chatbot", async (req, res) => {
   try {
     const userMsg = req.body.message;
 
-    // 🔹 STEP 1: Extract fund names (can be multiple)
+    // 🔹 STEP 1: Extract fund names
     const extractRes = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
       {
@@ -20,19 +20,15 @@ router.post("/chatbot", async (req, res) => {
             {
               role: "system",
               content:
-                "Extract ALL mutual fund company names from the message. Return comma-separated names like 'hdfc, sbi'. If none, return NONE.",
+                "Extract ALL mutual fund company names. Return comma-separated like 'hdfc, sbi'. If none, return NONE.",
             },
-            {
-              role: "user",
-              content: userMsg,
-            },
+            { role: "user", content: userMsg },
           ],
         }),
       }
     );
 
     const extractData = await extractRes.json();
-
     const raw =
       extractData.choices?.[0]?.message?.content?.toLowerCase() || "";
 
@@ -41,7 +37,7 @@ router.post("/chatbot", async (req, res) => {
         ? []
         : raw.split(",").map((s) => s.trim()).filter(Boolean);
 
-    // 🔹 STEP 2: If no fund mentioned → normal AI reply
+    // 🔹 STEP 2: No fund → normal reply
     if (fundKeywords.length === 0) {
       const normalRes = await fetch(
         "https://api.groq.com/openai/v1/chat/completions",
@@ -57,26 +53,22 @@ router.post("/chatbot", async (req, res) => {
               {
                 role: "system",
                 content:
-                  "You are a helpful mutual fund advisor. Answer general questions conversationally.",
+                  "You are a helpful mutual fund advisor. Keep answers short.",
               },
-              {
-                role: "user",
-                content: userMsg,
-              },
+              { role: "user", content: userMsg },
             ],
           }),
         }
       );
 
       const normalData = await normalRes.json();
-
       return res.json({
         reply:
           normalData.choices?.[0]?.message?.content || "No response",
       });
     }
 
-    // 🔹 STEP 3: Fetch MFAPI data for all funds
+    // 🔹 STEP 3: Fetch MF data
     const fundsData = [];
 
     for (const keyword of fundKeywords) {
@@ -91,21 +83,44 @@ router.post("/chatbot", async (req, res) => {
       const mfRes = await fetch(
         `http://localhost:5000/api/mutual-funds/${code}`
       );
-        const { meta, data } = mfData;
 
-        // basic
-        const fundName = meta?.scheme_name;
+      const mfData = await mfRes.json(); // ✅ FIXED
+      const { meta, data } = mfData;
 
-        // latest
-        const latest = data?.[0];
-        const latestNAV = latest?.nav;
-        const date = latest?.date;
+      if (!data || !data.length) continue;
 
-        // history (last 7 entries)
-        const navHistory = data
-        ?.slice(0, 7)
-        .map(d => `${d.date}: ₹${d.nav}`)
+      const fundName = meta?.scheme_name;
+
+      const latest = data[0];
+      const latestNAV = Number(latest?.nav);
+      const date = latest?.date;
+
+      // 🔹 Calculations
+      const navValues = data.map((d) => Number(d.nav)).filter(Boolean);
+
+      const maxNAV = Math.max(...navValues);
+      const minNAV = Math.min(...navValues);
+
+      const change90 =
+        navValues.length >= 90
+          ? navValues[0] - navValues[89]
+          : navValues[0] - navValues[navValues.length - 1];
+
+      const navHistory = data
+        .slice(0, 7)
+        .map((d) => `${d.date}: ₹${d.nav}`)
         .join("\n");
+
+      // ✅ FIXED: push data
+      fundsData.push({
+        name: fundName,
+        nav: latestNAV,
+        date,
+        change90,
+        minNAV,
+        maxNAV,
+        history: navHistory,
+      });
     }
 
     if (fundsData.length === 0) {
@@ -114,11 +129,18 @@ router.post("/chatbot", async (req, res) => {
       });
     }
 
-    // 🔹 STEP 4: Format data for AI
+    // 🔹 STEP 4: Format data
     const fundInfoText = fundsData
       .map(
-        (f) =>
-          `Fund: ${f.name}, NAV: ₹${f.nav}, Date: ${f.date}`
+        (f) => `
+Fund: ${f.name}
+NAV: ₹${f.nav}
+Date: ${f.date}
+90-day Change: ₹${f.change90.toFixed(2)}
+Range: ₹${f.minNAV.toFixed(2)} - ₹${f.maxNAV.toFixed(2)}
+Recent NAV:
+${f.history}
+`
       )
       .join("\n");
 
@@ -137,50 +159,27 @@ router.post("/chatbot", async (req, res) => {
             {
               role: "system",
               content:
-                "You are a mutual fund advisor. Use the given real data. If multiple funds, compare them clearly.",
+                "You are a mutual fund advisor. Keep answers short (2-3 lines). Compare if multiple funds.",
             },
             {
               role: "user",
               content: `
-                User question: ${req.body.message}
+User question: ${userMsg}
 
-                Fund Name: ${fundName}
+${fundInfoText}
 
-                Latest NAV: ₹${latestNAV}
-                Date: ${date}
-
-                90-day Change: ₹${change90.toFixed(2)}
-                Range: ₹${minNAV.toFixed(2)} - ₹${maxNAV.toFixed(2)}
-
-                Recent NAV History:
-                ${navHistory}
-
-                IMPORTANT:
-                - Use ONLY this data
-                - Do NOT assume missing values
-                - If data is insufficient, say so
-                You are a mutual fund advisor.
-
-                Rules:
-                - Keep answers SHORT (2–3 lines max)
-                - Be direct and practical
-                - No long explanations
-                - No unnecessary disclaimers
-                - If comparing, use bullet points
-
-
-                Answer clearly like a financial advisor.
-                `,
+Answer clearly and briefly.
+`,
             },
           ],
         }),
       }
     );
 
-    const data = await response.json();
+    const aiData = await response.json();
 
     res.json({
-      reply: data.choices?.[0]?.message?.content || "No response",
+      reply: aiData.choices?.[0]?.message?.content || "No response",
     });
   } catch (err) {
     console.error(err);

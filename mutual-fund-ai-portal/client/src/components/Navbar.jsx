@@ -39,7 +39,7 @@ justifyContent: "center",
 >
 📈 </div>
 
-```
+
     <div>
       <p style={{ margin: 0, fontSize: 12, color: theme.softText }}>
         Mutual Fund Project
@@ -53,10 +53,10 @@ justifyContent: "center",
   {/* Tabs */}
   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
     
-    <Link to="/guide" style={linkStyle}>Finance Guide</Link>
-    <Link to="/chatbot" style={linkStyle}>AI Chatbot</Link>
-    <Link to="/mutual-funds" style={linkStyle}>Funds</Link>
-    <Link to="/portfolio" style={linkStyle}>Portfolio</Link>
+<Link to="/guide" style={linkStyle}>Finance Guide</Link>
+<Link to="/chatbot" style={linkStyle}>AI Chatbot</Link>
+<Link to="/mutual-funds" style={linkStyle}>Funds</Link>
+<Link to="/portfolio" style={linkStyle}>Portfolio</Link>
   </div>
 
   {/* Notification Icon */}
