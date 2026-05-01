@@ -14,6 +14,7 @@ import AIAdvisory from '../pages/investor/AIAdvisory';
 import Portfolio from '../pages/investor/Portfolio';
 import SIPs from '../pages/investor/SIPs';
 import History from '../pages/investor/History';
+import MutualFunds from '../pages/MutualFunds';
 
 
 // Page imports - Admin
@@ -85,6 +86,14 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <History />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'mutual-funds',
+        element: (
+          <ProtectedRoute>
+            <MutualFunds />
           </ProtectedRoute>
         ),
       },

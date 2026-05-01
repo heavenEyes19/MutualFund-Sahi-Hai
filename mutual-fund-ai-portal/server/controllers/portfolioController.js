@@ -65,7 +65,12 @@ export const getPortfolio = async (req, res) => {
 };
 
 export const buyFund = async (req, res) => {
-  const { schemeCode, schemeName, amount, nav } = req.body;
+  let { schemeCode, schemeName, amount, nav } = req.body;
+  
+  if (!nav || nav <= 0) {
+    nav = await getLatestNav(schemeCode) || 100;
+  }
+  
   const units = amount / nav;
 
   try {
@@ -107,7 +112,11 @@ export const buyFund = async (req, res) => {
 };
 
 export const sellFund = async (req, res) => {
-  const { schemeCode, unitsToSell, currentNav } = req.body;
+  let { schemeCode, unitsToSell, currentNav } = req.body;
+
+  if (!currentNav || currentNav <= 0) {
+    currentNav = await getLatestNav(schemeCode) || 100;
+  }
 
   try {
     let holding = await Holding.findOne({ user: req.user._id, schemeCode });

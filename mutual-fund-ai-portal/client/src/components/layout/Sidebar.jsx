@@ -11,6 +11,7 @@ import {
   Database,
   Settings,
   X,
+  Landmark,
 } from 'lucide-react';
 import useAuthStore from '../../store/useAuthStore';
 
@@ -27,6 +28,7 @@ const Sidebar = ({ isOpen, onClose }) => {
   const navigationConfig = {
     investor: [
       { label: 'Dashboard', path: '/dashboard-area/dashboard', icon: LayoutDashboard },
+      { label: 'Mutual Funds', path: '/dashboard-area/mutual-funds', icon: Landmark },
       { label: 'AI Advisory', path: '/dashboard-area/ai-advisory', icon: Sparkles },
       { label: 'Portfolio', path: '/dashboard-area/portfolio', icon: Briefcase },
       { label: 'SIPs', path: '/dashboard-area/sips', icon: TrendingUp },

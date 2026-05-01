@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import API from '../../services/api';
 import {
   Play, Pause, StopCircle, Plus, Calendar, TrendingUp, IndianRupee, Clock, History
 } from 'lucide-react';
@@ -22,10 +22,7 @@ const SIPs = () => {
 
   const fetchSIPs = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await axios.get('/api/sips', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await API.get('/sips');
       setSips(Array.isArray(res.data) ? res.data : []);
       setLoading(false);
     } catch (err) {
@@ -36,10 +33,7 @@ const SIPs = () => {
 
   const executeSIP = async (id) => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(`/api/sips/${id}/execute`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await API.post(`/sips/${id}/execute`, {});
       fetchSIPs(); // Refresh list
       alert('SIP Executed Successfully! (Simulated month passed)');
     } catch (err) {
@@ -49,11 +43,8 @@ const SIPs = () => {
 
   const toggleStatus = async (id, currentStatus) => {
     try {
-      const token = localStorage.getItem('token');
       const newStatus = currentStatus === 'ACTIVE' ? 'PAUSED' : 'ACTIVE';
-      await axios.put(`/api/sips/${id}`, { status: newStatus }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await API.put(`/sips/${id}`, { status: newStatus });
       fetchSIPs();
     } catch (err) {
       alert('Error updating status');

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import API from '../../services/api';
 import {
   PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend
 } from 'recharts';
@@ -21,10 +21,7 @@ const Portfolio = () => {
 
   const fetchPortfolio = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await axios.get('/api/portfolio', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await API.get('/portfolio');
       setData(res.data);
       setLoading(false);
     } catch (err) {
