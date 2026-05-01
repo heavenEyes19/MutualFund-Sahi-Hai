@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
+import { Moon, Sun } from "lucide-react";
+import useDarkMode from "../hooks/useDarkMode";
 
 const GridPattern = () => (
   <svg
@@ -253,17 +255,18 @@ const Feature = ({ icon, title, desc }) => (
 );
 
 export default function Landing() {
+  const [isDarkMode, toggleDarkMode] = useDarkMode();
+
   return (
-    <div style={{ fontFamily: "'DM Sans', sans-serif", background: "#f7f9fc", minHeight: "100vh", overflowX: "hidden" }}>
+    <div className="bg-gray-50 dark:bg-gray-900 transition-colors duration-200 text-gray-900 dark:text-white" style={{ fontFamily: "'DM Sans', sans-serif", minHeight: "100vh", overflowX: "hidden" }}>
       <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet" />
 
       {/* Navbar */}
       <nav
+        className="bg-white/85 dark:bg-gray-900/85 border-b border-gray-200 dark:border-gray-800 transition-colors duration-200"
         style={{
           display: "flex", justifyContent: "space-between", alignItems: "center",
-          padding: "18px 6%", background: "rgba(247,249,252,0.85)",
-          backdropFilter: "blur(12px)", position: "sticky", top: 0, zIndex: 100,
-          borderBottom: "1px solid #e8edf3",
+          padding: "18px 6%", backdropFilter: "blur(12px)", position: "sticky", top: 0, zIndex: 100,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -279,9 +282,16 @@ export default function Landing() {
               <path d="M7 16l4-5 4 3 5-6" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
-          <span style={{ fontSize: 17, fontWeight: 700, color: "#0f172a", letterSpacing: "-0.02em" }}>Mutual-Funds Sahi Hai</span>
+          <span className="text-gray-900 dark:text-white" style={{ fontSize: 17, fontWeight: 700, letterSpacing: "-0.02em" }}>Mutual-Funds Sahi Hai</span>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <button
+            onClick={toggleDarkMode}
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-700 dark:text-gray-300"
+            title="Toggle dark mode"
+          >
+            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
           <Link
             to="/login"
             style={{
@@ -348,9 +358,10 @@ export default function Landing() {
           </div>
 
           <h1
+            className="text-gray-900 dark:text-white"
             style={{
               margin: 0, fontSize: "clamp(32px, 5vw, 52px)", fontWeight: 700,
-              color: "#0f172a", lineHeight: 1.15, letterSpacing: "-0.03em",
+              lineHeight: 1.15, letterSpacing: "-0.03em",
               fontFamily: "'DM Serif Display', serif",
             }}
           >
@@ -430,7 +441,7 @@ export default function Landing() {
       <section style={{ padding: "64px 6%", maxWidth: 1200, margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: 48 }}>
           <p style={{ margin: "0 0 10px", fontSize: 12, fontWeight: 600, color: "#1a6fd4", letterSpacing: "0.1em", textTransform: "uppercase" }}>Why choose us</p>
-          <h2 style={{ margin: 0, fontSize: "clamp(24px, 4vw, 36px)", fontWeight: 700, color: "#0f172a", letterSpacing: "-0.02em", fontFamily: "'DM Serif Display', serif" }}>
+          <h2 className="text-gray-900 dark:text-white" style={{ margin: 0, fontSize: "clamp(24px, 4vw, 36px)", fontWeight: 700, letterSpacing: "-0.02em", fontFamily: "'DM Serif Display', serif" }}>
             Everything you need to grow wealth
           </h2>
         </div>
@@ -519,7 +530,7 @@ export default function Landing() {
       </section>
 
       {/* Footer */}
-      <footer style={{ borderTop: "1px solid #e8edf3", padding: "28px 6%", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+      <footer className="border-t border-gray-200 dark:border-gray-800" style={{ padding: "28px 6%", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ width: 22, height: 22, borderRadius: 6, background: "linear-gradient(135deg, #0f4c81, #1a6fd4)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
@@ -527,10 +538,10 @@ export default function Landing() {
               <path d="M7 16l4-5 4 3 5-6" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
-          <span style={{ fontSize: 14, fontWeight: 600, color: "#0f172a" }}>Mutual-Fund Sahi Hai</span>
+          <span className="text-gray-900 dark:text-white" style={{ fontSize: 14, fontWeight: 600 }}>Mutual-Funds Sahi Hai</span>
         </div>
-        <p style={{ margin: 0, fontSize: 12, color: "#94a3b8" }}>
-          © 2025 Mutual-Fund Sahi Hai · SEBI Registered · AMFI Compliant
+        <p className="text-gray-500 dark:text-gray-400" style={{ margin: 0, fontSize: 12 }}>
+          © 2025 Mutual-Funds Sahi Hai · SEBI Registered · AMFI Compliant
         </p>
       </footer>
     </div>

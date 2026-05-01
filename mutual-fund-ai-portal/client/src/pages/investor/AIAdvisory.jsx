@@ -69,7 +69,7 @@ const AIAdvisory = () => {
           </div>
           <div>
             <h1 className="text-sm font-semibold text-white">AI Advisory</h1>
-            <p className="text-[11px] text-gray-500">Powered by MutualFund AI</p>
+            <p className="text-[11px] text-gray-500">Powered by Mutual-Funds Sahi Hai</p>
           </div>
         </div>
 

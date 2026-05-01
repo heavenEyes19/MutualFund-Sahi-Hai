@@ -39,7 +39,7 @@ const MessageBubble = ({ msg }) => {
             <Sparkles size={11} className="text-blue-400" />
           </div>
           <span className="text-[11px] text-gray-500 font-medium">
-            MutualFund AI
+            Mutual-Funds Sahi Hai
           </span>
         </div>
 

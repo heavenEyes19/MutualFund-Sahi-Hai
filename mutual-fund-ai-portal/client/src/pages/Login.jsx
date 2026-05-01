@@ -3,8 +3,10 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Mail, Lock, LogIn, AlertCircle } from "lucide-react";
 import API from "../services/api";
 import useAuthStore from "../store/useAuthStore";
+import useDarkMode from "../hooks/useDarkMode";
 
 export default function Login() {
+  useDarkMode();
   const [form, setForm] = useState({ email: "", password: "" });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");

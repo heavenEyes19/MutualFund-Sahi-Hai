@@ -36,7 +36,7 @@ const Navbar = ({ onMenuToggle, isDarkMode, onDarkModeToggle }) => {
               <span className="text-white font-bold text-lg">MF</span>
             </div>
             <span className="hidden sm:inline font-bold text-lg text-gray-900 dark:text-white">
-              MutualFund AI
+              Mutual-Funds Sahi Hai
             </span>
           </div>
         </div>

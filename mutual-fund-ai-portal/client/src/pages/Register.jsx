@@ -2,8 +2,10 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { User, Shield, Mail, Lock, UserPlus, ArrowRight } from "lucide-react";
 import API from "../services/api";
+import useDarkMode from "../hooks/useDarkMode";
 
 export default function Register() {
+  useDarkMode();
   const [role, setRole] = useState("investor"); // Default role
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [isLoading, setIsLoading] = useState(false);
