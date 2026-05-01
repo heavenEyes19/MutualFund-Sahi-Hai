@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from "react";
 import { Sparkles, Send } from "lucide-react";
 
 import MessageBubble from "@/components/ai/MessageBubble";
-// import TypingIndicator from "@/components/ai/TypingIndicator";
 import EmptyState from "@/components/ai/EmptyState";
 
 const SUGGESTED_PROMPTS = [
@@ -82,14 +81,13 @@ const AIAdvisory = () => {
               <MessageBubble key={msg.text + i} msg={msg} />
             ))
           )}
-
           <div ref={bottomRef} />
         </div>
 
         {/* Suggested prompts */}
         {messages.length > 0 && !loading && (
           <div className="px-5 py-2 flex gap-2 overflow-x-auto border-t border-gray-800">
-            {SUGGESTED_PROMPTS.map((label, i) => (
+            {SUGGESTED_PROMPTS.map((label) => (
               <button
                 key={label}
                 onClick={() => sendMessage(label)}

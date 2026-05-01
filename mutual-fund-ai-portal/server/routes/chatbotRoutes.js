@@ -129,7 +129,7 @@ async function getSummary(userMsg, fundsData) {
             role: "system",
             content: hasFunds
               ? `You are a mutual fund advisor.
-
+            Answer only if the user is talking about mutual funds.
             Use ONLY the provided fund names to answer.
             Do not invent numbers.
           
