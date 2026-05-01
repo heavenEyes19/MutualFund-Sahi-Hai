@@ -23,13 +23,13 @@ async function getFundNamesFromAI(userMsg) {
         {
           role: "system",
           content: `You are a mutual fund search keyword generator for the Indian market.
-Given a user query, return a JSON array of 2-3 short fund search keywords to look up on a fund database.
+Return a JSON array of 2-3 short fund search keywords.
+
 RULES:
-- Return ONLY a raw JSON array of strings. No explanation, no markdown, no backticks.
-- Use SHORT keywords only — fund house name + 1-2 words max (e.g. "HDFC Top 100", "SBI Bluechip", "Mirae Large Cap")
-- Do NOT return full official fund names — they won't match search results
-- If query mentions a non-existent entity (e.g. "Kodak fund"), return []
-Example: ["HDFC Top 100", "SBI Bluechip", "Mirae Large Cap"]`,
+- ONLY return JSON array of strings
+- No explanation, no markdown
+- Keep keywords short (e.g. "HDFC Top 100", "SBI Bluechip")
+- If nothing relevant, return []`,
         },
         { role: "user", content: userMsg },
       ],
@@ -47,7 +47,7 @@ Example: ["HDFC Top 100", "SBI Bluechip", "Mirae Large Cap"]`,
   }
 }
 
-// ─── Step 2: Search MFAPI, rank by Direct+Growth preference ──────────────
+// ─── Step 2: Search MFAPI ────────────────────────────────────────────────
 async function resolveSchemeCodes(fundName) {
   try {
     const res = await fetch(`${MFAPI}/search?q=${encodeURIComponent(fundName)}`);
@@ -69,7 +69,7 @@ async function resolveSchemeCodes(fundName) {
   }
 }
 
-// ─── Step 3: Fetch NAV data for a scheme code ─────────────────────────────
+// ─── Step 3: Fetch NAV data ──────────────────────────────────────────────
 async function fetchFundData(schemeCode) {
   try {
     const res = await fetch(`${MFAPI}/${schemeCode}`);
@@ -81,7 +81,6 @@ async function fetchFundData(schemeCode) {
     const navValues = data.map((d) => Number(d.nav)).filter((n) => n > 0);
     if (navValues.length < 2) return null;
 
-    // ✅ FIXED: percentage change instead of raw difference
     const latest = navValues[0];
     const past =
       navValues.length >= 90
@@ -103,7 +102,7 @@ async function fetchFundData(schemeCode) {
   }
 }
 
-// All candidate codes fetched in parallel — first valid result wins
+// ─── Resolve fund data ───────────────────────────────────────────────────
 async function resolveFundData(fundName) {
   const codes = await resolveSchemeCodes(fundName);
   if (!codes.length) return null;
@@ -112,9 +111,11 @@ async function resolveFundData(fundName) {
   return results.find(Boolean) || null;
 }
 
-// ─── Step 4: Groq summarizes verified data ───────────────────────────────
+// ─── Step 4: Groq summary (ALWAYS runs) ──────────────────────────────────
 async function getSummary(userMsg, fundsData) {
   try {
+    const hasFunds = fundsData && fundsData.length > 0;
+
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -126,33 +127,43 @@ async function getSummary(userMsg, fundsData) {
         messages: [
           {
             role: "system",
-            content: `Write all summary that:
-- Compares the funds clearly
-- Mentions which fund is better for what (growth, stability, etc.)
-- Uses qualitative reasoning (e.g. "higher growth", "more stable")
-- DO NOT invent any numbers
-- DO NOT repeat the same sentence structure
+            content: hasFunds
+              ? `You are a mutual fund advisor.
 
-Make it sound useful and insightful, not generic.`,
+            Use ONLY the provided fund names to answer.
+            Do not invent numbers.
+          
+
+            Format:
+            Summary
+            Insights: key differences
+            Recommendation: who should choose what`
+              : `You are a mutual fund advisor.
+
+            No fund data is available.
+            Answer using general investment knowledge.
+            
+
+            Format:
+            Summary
+            Guidance: what to consider`,
           },
           {
             role: "user",
-            content: `Question: "${userMsg}"\nFunds: ${fundsData
-              .map((f) => f.name)
-              .join(", ")}`,
+            content: hasFunds
+              ? `Question: "${userMsg}"
+Funds: ${fundsData.map((f) => f.name).join(", ")}`
+              : userMsg,
           },
         ],
       }),
     });
 
     const json = await res.json();
-    const text = json.choices?.[0]?.message?.content || "";
-
-    return /\d{2,}/.test(text)
-      ? "Here are the most relevant funds for your query."
-      : text;
+const raw = json.choices?.[0]?.message?.content?.trim() || "Unable to generate response.";
+return raw.replace(/\*+/g, "").replace(/\n{3,}/g, "\n\n").trim();
   } catch {
-    return "Here are the most relevant funds for your query.";
+    return "Something went wrong. Try again.";
   }
 }
 
@@ -167,34 +178,22 @@ router.post("/chatbot", async (req, res) => {
       extractCompareTerms(userMsg) ||
       (await getFundNamesFromAI(userMsg));
 
-    if (!fundNames.length) {
-      return res.json({
-        reply:
-          "I couldn't find any relevant mutual funds for that query. Try asking about specific funds or categories like 'HDFC' or 'best long term funds'.",
-        funds: [],
-      });
-    }
+    const fundsData = fundNames?.length
+      ? (await Promise.all(fundNames.map(resolveFundData))).filter(Boolean)
+      : [];
 
-    const fundsData = (
-      await Promise.all(fundNames.map(resolveFundData))
-    ).filter(Boolean);
-
-    if (!fundsData.length) {
-      return res.json({
-        reply:
-          "Couldn't retrieve live fund data right now. Please try again in a moment.",
-        funds: [],
-      });
-    }
-
+    // ✅ ALWAYS generate reply (with or without data)
     const reply = await getSummary(userMsg, fundsData);
 
-    res.json({ reply, funds: fundsData });
+    res.json({
+      reply,
+      funds: fundsData,
+    });
   } catch (err) {
     console.error(err);
-    res
-      .status(500)
-      .json({ reply: "Something went wrong. Please try again." });
+    res.status(500).json({
+      reply: "Something went wrong. Please try again.",
+    });
   }
 });
 

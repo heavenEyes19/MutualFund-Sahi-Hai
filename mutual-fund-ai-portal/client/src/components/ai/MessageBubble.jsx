@@ -45,7 +45,7 @@ const MessageBubble = ({ msg }) => {
 
         {/* 🔥 Summary Box */}
         <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-gray-800/60 border border-gray-700/50 text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">
-          <p className="text-[11px] text-gray-500 mb-1">Summary</p>
+          <p className="text-[11px] text-gray-500 mb-2">Summary</p>
           <p>{msg.text}</p>
         </div>
 
