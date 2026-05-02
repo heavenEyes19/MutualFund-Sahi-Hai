@@ -1,7 +1,6 @@
 import { Sparkles } from "lucide-react";
 import FundCardGrid from "./FundCardGrid";
 
-// 🔹 Optional: move this later to utils if you want
 const formatFunds = (funds) =>
   funds.map((f) => ({
     name: f.name,
@@ -25,7 +24,6 @@ const MessageBubble = ({ msg }) => {
     );
   }
 
-  // ✅ BOT MESSAGE
   const funds = msg.funds?.length ? formatFunds(msg.funds) : null;
   const isComparison = funds && funds.length >= 2;
 
@@ -36,16 +34,23 @@ const MessageBubble = ({ msg }) => {
         {/* Header */}
         <div className="flex items-center gap-1.5">
           <div className="w-6 h-6 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center">
-            <Sparkles size={11} className="text-blue-400" />
+            <Sparkles size={11} className="text-blue-500 dark:text-blue-400" />
           </div>
-          <span className="text-[11px] text-gray-500 font-medium">
+          <span className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">
             Mutual-Funds Sahi Hai
           </span>
         </div>
 
         {/* 🔥 Summary Box */}
-        <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-gray-800/60 border border-gray-700/50 text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">
-          <p className="text-[11px] text-gray-500 mb-2">Summary</p>
+        <div className="px-4 py-3 rounded-2xl rounded-tl-sm 
+          bg-gray-100 dark:bg-gray-800/60 
+          border border-gray-200 dark:border-gray-700/50 
+          text-sm text-gray-800 dark:text-gray-200 
+          leading-relaxed whitespace-pre-wrap"
+        >
+          <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-2">
+            Summary
+          </p>
           <p>{msg.text}</p>
         </div>
 

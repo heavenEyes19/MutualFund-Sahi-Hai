@@ -41,7 +41,7 @@ const FundCardGrid = ({ funds, isComparison }) => {
 
       {/* 🔁 Comparison label */}
       {isComparison && (
-        <div className="col-span-full flex items-center gap-2 text-xs text-blue-400 font-medium mb-1">
+        <div className="col-span-full flex items-center gap-2 text-xs text-blue-500 dark:text-blue-400 font-medium mb-1">
           <ArrowLeftRight size={13} />
           Side-by-side comparison
         </div>

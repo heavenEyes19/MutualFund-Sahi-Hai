@@ -415,17 +415,15 @@ export default function Landing() {
           </div>
 
           {/* Stats */}
-          <div
-            style={{
-              display: "flex", gap: 32, marginTop: 48,
-              paddingTop: 32, borderTop: "1px solid #e8edf3",
-              flexWrap: "wrap",
-            }}
-          >
+          <div className="flex flex-wrap gap-8 mt-12 pt-8 border-t border-gray-200 dark:border-gray-700">
             {[["₹2,400 Cr+", "AUM Tracked"], ["15,000+", "Active Investors"], ["98.4%", "Accuracy Rate"]].map(([val, lbl]) => (
               <div key={lbl}>
-                <p style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#0f172a" }}>{val}</p>
-                <p style={{ margin: "2px 0 0", fontSize: 12, color: "#94a3b8" }}>{lbl}</p>
+                <p className="m-0 text-2xl font-bold text-gray-900 dark:text-white">
+                  {val}
+                </p>
+                <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                  {lbl}
+                </p>
               </div>
             ))}
           </div>
