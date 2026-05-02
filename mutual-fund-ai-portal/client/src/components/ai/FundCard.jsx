@@ -1,4 +1,5 @@
 import { TrendingUp, TrendingDown, Minus, Star, Shield, BarChart2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const ChangeIndicator = ({ change }) => {
   if (change === null || change === undefined) return null;
@@ -37,6 +38,8 @@ const RiskBadge = ({ level }) => {
 };
 
 const FundCard = ({ fund, highlight }) => {
+  const navigate = useNavigate();
+
   const highlightConfig = {
     return: {
       label: "Best Return",
@@ -62,10 +65,11 @@ const FundCard = ({ fund, highlight }) => {
 
   return (
     <div
+      onClick={() => navigate(`/dashboard-area/mutual-funds?q=${encodeURIComponent(fund.name)}`)}
       className={`relative flex flex-col gap-3 p-4 rounded-xl 
         bg-white dark:bg-gray-800/60 
         border border-gray-200 dark:border-gray-700/50 
-        backdrop-blur-sm transition-all duration-200 
+        backdrop-blur-sm transition-all duration-200 cursor-pointer
         hover:bg-gray-50 dark:hover:bg-gray-800/80 
         hover:scale-[1.02] ${h ? h.border : ""}`}
     >
