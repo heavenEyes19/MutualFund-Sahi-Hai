@@ -1,14 +1,16 @@
 import { Sparkles } from "lucide-react";
 import FundCardGrid from "./FundCardGrid";
 
-const formatFunds = (funds) =>
-  funds.map((f) => ({
-    name: f.name,
-    nav: `₹${f.nav}`,
-    change: f.change90,
+const formatFunds = (funds) => {
+  if (!Array.isArray(funds)) return [];
+  return funds.map((f) => ({
+    name: f.name || "Unknown Fund",
+    nav: f.nav ? `₹${f.nav}` : "N/A",
+    change: typeof f.change90 === "number" ? f.change90 : 0,
     risk: "Medium",
-    description: `Range ₹${f.minNAV?.toFixed(2)} - ₹${f.maxNAV?.toFixed(2)}`,
+    description: `Range ₹${typeof f.minNAV === "number" ? f.minNAV.toFixed(2) : "0.00"} - ₹${typeof f.maxNAV === "number" ? f.maxNAV.toFixed(2) : "0.00"}`,
   }));
+};
 
 const MessageBubble = ({ msg }) => {
   const isUser = msg.type === "user";
@@ -55,7 +57,7 @@ const MessageBubble = ({ msg }) => {
         </div>
 
         {/* 📊 Fund Cards */}
-        {funds && (
+        {funds && funds.length > 0 && (
           <FundCardGrid funds={funds} isComparison={isComparison} />
         )}
 

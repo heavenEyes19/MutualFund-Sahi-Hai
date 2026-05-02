@@ -9,9 +9,8 @@ const ChangeIndicator = ({ change }) => {
 
   return (
     <span
-      className={`flex items-center gap-1 text-xs font-semibold ${
-        positive ? "text-emerald-500 dark:text-emerald-400" : "text-rose-500 dark:text-rose-400"
-      }`}
+      className={`flex items-center gap-1 text-xs font-semibold ${positive ? "text-emerald-500 dark:text-emerald-400" : "text-rose-500 dark:text-rose-400"
+        }`}
     >
       <Icon size={12} />
       {Math.abs(change).toFixed(2)}% (90d)
@@ -28,9 +27,8 @@ const RiskBadge = ({ level }) => {
 
   return (
     <span
-      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
-        config[level] || config.Medium
-      }`}
+      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${config[level] || config.Medium
+        }`}
     >
       {level} Risk
     </span>
@@ -39,7 +37,6 @@ const RiskBadge = ({ level }) => {
 
 const FundCard = ({ fund, highlight }) => {
   const navigate = useNavigate();
-
   const highlightConfig = {
     return: {
       label: "Best Return",
@@ -66,10 +63,10 @@ const FundCard = ({ fund, highlight }) => {
   return (
     <div
       onClick={() => navigate(`/dashboard-area/mutual-funds?q=${encodeURIComponent(fund.name)}`)}
-      className={`relative flex flex-col gap-3 p-4 rounded-xl 
+      className={`relative flex flex-col gap-3 p-4 rounded-xl cursor-pointer
         bg-white dark:bg-gray-800/60 
         border border-gray-200 dark:border-gray-700/50 
-        backdrop-blur-sm transition-all duration-200 cursor-pointer
+        backdrop-blur-sm transition-all duration-200 
         hover:bg-gray-50 dark:hover:bg-gray-800/80 
         hover:scale-[1.02] ${h ? h.border : ""}`}
     >

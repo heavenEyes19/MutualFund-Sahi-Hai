@@ -19,17 +19,19 @@ async function getFundNamesFromAI(userMsg) {
     },
     body: JSON.stringify({
       model: "llama-3.1-8b-instant",
+      response_format: { type: "json_object" },
       messages: [
         {
           role: "system",
           content: `You are a mutual fund search keyword generator for the Indian market.
-Return a JSON array of 2-3 short fund search keywords.
+Output a JSON object with a "keywords" array containing 2-3 short fund search keywords.
 
 RULES:
-- ONLY return JSON array of strings
-- No explanation, no markdown
+- ONLY return a JSON object
+- No explanation
 - Keep keywords short (e.g. "HDFC Top 100", "SBI Bluechip")
-- If nothing relevant, return []`,
+- Interpret generic terms (like "long term" or "low risk") into actual specific fund names.
+- If nothing relevant, return {"keywords": []}`,
         },
         { role: "user", content: userMsg },
       ],
@@ -37,11 +39,11 @@ RULES:
   });
 
   const json = await res.json();
-  const text = json.choices?.[0]?.message?.content?.trim() || "[]";
+  const text = json.choices?.[0]?.message?.content?.trim() || '{"keywords": []}';
 
   try {
     const parsed = JSON.parse(text);
-    return Array.isArray(parsed) ? parsed.slice(0, 3) : [];
+    return Array.isArray(parsed.keywords) ? parsed.keywords.slice(0, 3) : [];
   } catch {
     return [];
   }
@@ -128,25 +130,21 @@ async function getSummary(userMsg, fundsData) {
           {
             role: "system",
             content: hasFunds
-              ? `You are a mutual fund advisor.
-            Answer only if the user is talking about mutual funds.
-            Use ONLY the provided fund names to answer.
-            Do not invent numbers.
-          
+              ? `You are a helpful mutual fund advisor for the Indian market.
+The user has asked a question and the following real fund data has been fetched for context.
+Use ONLY the provided fund names and data to answer. Do not invent numbers.
 
-            Format:
-            Summary
-            Insights: key differences
-            Recommendation: who should choose what`
-              : `You are a mutual fund advisor.
+Format your answer as:
+Summary: (brief overview)
+Insights: (key differences between the funds)
+Recommendation: (who should invest in which fund and why)`
+              : `You are a helpful mutual fund advisor for the Indian market.
+Answer the user's question using general investment knowledge.
+Be direct and informative.
 
-            No fund data is available.
-            Answer using general investment knowledge.
-            
-
-            Format:
-            Summary
-            Guidance: what to consider`,
+Format your answer as:
+Summary: (brief overview)
+Guidance: (what the user should consider)`,
           },
           {
             role: "user",
@@ -160,8 +158,8 @@ Funds: ${fundsData.map((f) => f.name).join(", ")}`
     });
 
     const json = await res.json();
-const raw = json.choices?.[0]?.message?.content?.trim() || "Unable to generate response.";
-return raw.replace(/\*+/g, "").replace(/\n{3,}/g, "\n\n").trim();
+    const raw = json.choices?.[0]?.message?.content?.trim() || "Unable to generate response.";
+    return raw.replace(/\*+/g, "").replace(/\n{3,}/g, "\n\n").trim();
   } catch {
     return "Something went wrong. Try again.";
   }
@@ -178,6 +176,7 @@ router.post("/chatbot", async (req, res) => {
       extractCompareTerms(userMsg) ||
       (await getFundNamesFromAI(userMsg));
 
+    // Only resolve fund data if the AI actually identified relevant fund keywords
     const fundsData = fundNames?.length
       ? (await Promise.all(fundNames.map(resolveFundData))).filter(Boolean)
       : [];
