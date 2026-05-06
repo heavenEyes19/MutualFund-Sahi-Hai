@@ -31,7 +31,7 @@ export default function Register() {
         alert(`[Demo Mode] Registration successful for ${role}! Redirecting to login...`);
         navigate("/login");
       } else {
-        setError(err.response?.data?.message || "An error occurred during registration.");
+        setError(err.response?.data?.msg || err.response?.data?.message || "An error occurred during registration.");
       }
     } finally {
       setIsLoading(false);

@@ -347,8 +347,8 @@ export default function MutualFunds() {
                         key={fund.schemeCode}
                         onClick={() => setSelectedSchemeCode(String(fund.schemeCode))}
                         className={`w-full text-left p-4 rounded-lg transition-all ${isSelected
-                            ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-500 dark:border-blue-400 shadow-sm'
-                            : 'hover:bg-gray-50 dark:hover:bg-gray-700/50 border-transparent hover:border-gray-200 dark:hover:border-gray-600'
+                          ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-500 dark:border-blue-400 shadow-sm'
+                          : 'hover:bg-gray-50 dark:hover:bg-gray-700/50 border-transparent hover:border-gray-200 dark:hover:border-gray-600'
                           } border`}
                       >
                         <h4 className={`font-semibold text-sm line-clamp-2 ${isSelected ? 'text-blue-700 dark:text-blue-300' : 'text-gray-800 dark:text-gray-200'}`}>
@@ -560,8 +560,8 @@ export default function MutualFunds() {
 
                 {txMessage && (
                   <div className={`mb-6 p-4 rounded-lg flex items-start gap-3 ${txMessage.type === 'success'
-                      ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                      : 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                    ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                    : 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300'
                     }`}>
                     {txMessage.type === 'success' ? <CheckCircle2 className="shrink-0 mt-0.5" size={18} /> : <ShieldAlert className="shrink-0 mt-0.5" size={18} />}
                     <span className="text-sm font-medium">{txMessage.text}</span>

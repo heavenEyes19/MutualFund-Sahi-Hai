@@ -10,6 +10,8 @@ const userSchema = new mongoose.Schema(
       enum: ["investor", "admin"],
       default: "investor",
     },
+    otp: { type: String, default: null },
+    otpExpires: { type: Date, default: null },
   },
   { timestamps: true }
 );
