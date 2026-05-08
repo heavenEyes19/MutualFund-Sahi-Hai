@@ -30,16 +30,12 @@ const io = new Server(server, {
 });
 
 io.on("connection", (socket) => {
-  console.log("A user connected:", socket.id);
-
   socket.on("joinChat", (investorId) => {
     socket.join(String(investorId));
-    console.log(`User joined room: ${investorId}`);
   });
 
   socket.on("leaveChat", (investorId) => {
     socket.leave(String(investorId));
-    console.log(`User left room: ${investorId}`);
   });
 
   socket.on("sendMessage", async (data) => {
@@ -53,12 +49,13 @@ io.on("connection", (socket) => {
       // Save to DB in background
       await newMessage.save();
     } catch (err) {
+      // Only log actual errors
       console.error("Error saving message", err);
     }
   });
 
   socket.on("disconnect", () => {
-    console.log("User disconnected:", socket.id);
+    // Clean up if needed
   });
 });
 
