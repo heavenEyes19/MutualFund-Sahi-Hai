@@ -22,6 +22,7 @@ import AdminPlatformAnalytics from '../pages/admin/Analytics';
 import KYCManagement from '../pages/admin/KYCManagement';
 import FundMaster from '../pages/admin/FundMaster';
 import Settings from '../pages/admin/Settings';
+import AdminSupport from '../pages/admin/Support';
 
 // Router configuration
 const router = createBrowserRouter([
@@ -128,6 +129,14 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <Settings />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'support',
+        element: (
+          <ProtectedRoute>
+            <AdminSupport />
           </ProtectedRoute>
         ),
       },

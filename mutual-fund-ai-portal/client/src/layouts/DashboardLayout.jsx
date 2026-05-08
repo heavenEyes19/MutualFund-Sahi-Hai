@@ -3,7 +3,7 @@ import { Outlet } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import Sidebar from '../components/layout/Sidebar';
 import useDarkMode from '../hooks/useDarkMode';
-
+import ChatWidget from '../components/chat/ChatWidget';
 /**
  * Main dashboard layout wrapper
  * Combines Navbar and Sidebar with responsive design and dark mode support
@@ -37,6 +37,7 @@ const DashboardLayout = () => {
       <main className="flex-1 overflow-auto pt-16 lg:ml-64">
         <Outlet />
       </main>
+      <ChatWidget />
     </div>
   );
 };

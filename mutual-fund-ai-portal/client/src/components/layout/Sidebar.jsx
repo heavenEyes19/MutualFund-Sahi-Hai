@@ -38,6 +38,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       { label: 'Platform Analytics', path: '/dashboard-area/analytics', icon: BarChart3 },
       { label: 'KYC Management', path: '/dashboard-area/kyc-management', icon: Lock },
       { label: 'Fund Master', path: '/dashboard-area/fund-master', icon: Database },
+      { label: 'Support Chats', path: '/dashboard-area/support', icon: Sparkles },
       { label: 'Settings', path: '/dashboard-area/settings', icon: Settings },
     ],
   };
