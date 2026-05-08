@@ -6,12 +6,15 @@ import mutualFundRoutes from "./routes/mutualFundRoutes.js";
 import chatbotRoutes from "./routes/chatbotRoutes.js";
 import portfolioRoutes from "./routes/portfolioRoutes.js";
 import sipRoutes from "./routes/sipRoutes.js";
+import kycRoutes from "./routes/kycRoutes.js";
+import path from "path";
 
 const app = express();
 
 // middleware
 app.use(cors());
 app.use(express.json());
+app.use("/uploads", express.static(path.join(process.cwd(), "public", "uploads")));
 
 // routes
 app.use("/api/auth", authRoutes); 
@@ -20,6 +23,7 @@ app.use("/api/mutual-funds", mutualFundRoutes);
 app.use("/api/chatbot", chatbotRoutes);
 app.use("/api/portfolio", portfolioRoutes);
 app.use("/api/sips", sipRoutes);
+app.use("/api/kyc", kycRoutes);
 
 app.get("/", (req, res) => {
   res.send("API Running");

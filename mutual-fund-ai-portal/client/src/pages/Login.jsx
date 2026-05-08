@@ -41,16 +41,16 @@ export default function Login() {
         if (res.data.requiresOtp) {
           setStep(2);
         } else {
-          const { token, role, user } = res.data;
-          login(user || { email: form.email, role }, token);
-          navigate(getDashboardPath(role));
+          const { token, ...userData } = res.data;
+          login(userData || { email: form.email, role: userData.role }, token);
+          navigate(getDashboardPath(userData.role));
         }
       } else {
         const res = await API.post("/auth/verify-otp", { email: form.email, otp: form.otp });
         
-        const { token, role, user } = res.data;
-        login(user || { email: form.email, role }, token);
-        navigate(getDashboardPath(role));
+        const { token, ...userData } = res.data;
+        login(userData || { email: form.email, role: userData.role }, token);
+        navigate(getDashboardPath(userData.role));
       }
     } catch (err) {
       console.error(err);

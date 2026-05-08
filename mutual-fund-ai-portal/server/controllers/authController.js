@@ -7,7 +7,7 @@ import sendEmail from "../utils/sendEmail.js";
 // 🔹 REGISTER
 export const register = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, role } = req.body;
 
     // Check if user exists
     const userExists = await User.findOne({ email });
@@ -23,6 +23,7 @@ export const register = async (req, res) => {
       name,
       email,
       password: hashedPassword,
+      ...(role && { role }),
     });
 
     // Send response WITHOUT password
