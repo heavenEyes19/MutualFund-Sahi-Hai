@@ -33,12 +33,12 @@ io.on("connection", (socket) => {
   console.log("A user connected:", socket.id);
 
   socket.on("joinChat", (investorId) => {
-    socket.join(investorId);
+    socket.join(String(investorId));
     console.log(`User joined room: ${investorId}`);
   });
 
   socket.on("leaveChat", (investorId) => {
-    socket.leave(investorId);
+    socket.leave(String(investorId));
     console.log(`User left room: ${investorId}`);
   });
 
@@ -46,9 +46,12 @@ io.on("connection", (socket) => {
     try {
       const { investorId, senderId, senderRole, text } = data;
       const newMessage = new Message({ investorId, senderId, senderRole, text });
-      await newMessage.save();
       
-      socket.to(investorId).emit("receiveMessage", newMessage);
+      // Emit instantly for real-time
+      socket.to(String(investorId)).emit("receiveMessage", newMessage);
+      
+      // Save to DB in background
+      await newMessage.save();
     } catch (err) {
       console.error("Error saving message", err);
     }

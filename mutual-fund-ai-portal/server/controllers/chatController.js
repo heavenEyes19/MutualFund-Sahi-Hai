@@ -15,7 +15,9 @@ export const getChatHistory = async (req, res) => {
       return res.status(400).json({ message: "Investor ID is required" });
     }
 
-    const messages = await Message.find({ investorId }).sort({ createdAt: 1 });
+    const searchId = String(investorId);
+
+    const messages = await Message.find({ investorId: searchId }).sort({ createdAt: 1 });
     res.status(200).json(messages);
   } catch (error) {
     res.status(500).json({ message: "Server Error", error: error.message });
@@ -34,7 +36,13 @@ export const getChatInvestors = async (req, res) => {
     // Get unique investor IDs
     const investorIds = [...new Set(messages.map(m => m.investorId.toString()))];
     
-    const investors = await User.find({ _id: { $in: investorIds } }, "name email role");
+    // Filter out invalid ObjectIds (e.g. from mock logins) to prevent Mongoose CastError
+    const validInvestorIds = investorIds.filter(id => /^[0-9a-fA-F]{24}$/.test(id));
+
+    let investors = [];
+    if (validInvestorIds.length > 0) {
+      investors = await User.find({ _id: { $in: validInvestorIds } }, "name email role");
+    }
     
     // Sort investors by the latest message they sent or received
     const sortedInvestors = investors.sort((a, b) => {
