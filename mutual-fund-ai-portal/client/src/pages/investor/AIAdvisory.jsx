@@ -60,7 +60,6 @@ const AIAdvisory = () => {
   return (
     <div className="flex flex-col h-full w-full">
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5">
         {messages.length === 0 ? (
           <EmptyState onPrompt={sendMessage} />
@@ -68,6 +67,14 @@ const AIAdvisory = () => {
           messages.map((msg, i) => (
             <MessageBubble key={msg.text + i} msg={msg} />
           ))
+        )}
+        {loading && (
+          <div className="flex justify-start">
+            <div className="px-4 py-3 rounded-2xl rounded-tl-sm bg-gray-100 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700/50 text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+              <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping" />
+              AI is thinking...
+            </div>
+          </div>
         )}
         <div ref={bottomRef} />
       </div>

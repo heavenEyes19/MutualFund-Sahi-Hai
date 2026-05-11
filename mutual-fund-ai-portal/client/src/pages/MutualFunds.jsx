@@ -20,7 +20,7 @@ import {
   listMutualFunds,
   searchMutualFunds,
 } from "../services/mutualFunds";
-import { getPortfolio, buyFund, sellFund, createSIP } from "../services/portfolio";
+import { getPortfolio, buyFund, sellFund, createSIP, createRazorpayOrder, verifyRazorpayPayment } from "../services/portfolio";
 
 // Utility functions
 const parseNumber = (value) => {
@@ -244,13 +244,62 @@ export default function MutualFunds() {
             durationMonths: Number(txDuration)
           });
           setTxMessage({ type: 'success', text: `Successfully started SIP for ${payload.schemeName}` });
+          setShowTxModal(false);
+          setShowSuccessModal(true);
         } else {
-          await buyFund(payload);
-          setTxMessage({ type: 'success', text: `Successfully bought ${payload.schemeName}` });
+          // Razorpay flow for Lumpsum
+          const order = await createRazorpayOrder(Number(txAmount));
+          
+          const options = {
+            key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Snsc6Pg1LbIYVH", // Enter the Key ID generated from the Dashboard
+            amount: order.amount,
+            currency: "INR",
+            name: "Mutual Fund Sahi Hai",
+            description: `Buy ${payload.schemeName}`,
+            order_id: order.id,
+            handler: async function (response) {
+              try {
+                await verifyRazorpayPayment({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  schemeCode: payload.schemeCode,
+                  schemeName: payload.schemeName,
+                  amount: payload.amount,
+                  nav: payload.nav,
+                });
+                
+                setTxMessage({ type: 'success', text: `Successfully bought ${payload.schemeName}` });
+                setShowTxModal(false);
+                setShowSuccessModal(true);
+                
+                // Refresh portfolio
+                const data = await getPortfolio();
+                if (data && data.holdings) setPortfolioHoldings(data.holdings);
+              } catch (err) {
+                console.error("Verification failed", err);
+                setTxMessage({ type: 'error', text: "Payment verification failed" });
+              }
+            },
+            prefill: {
+              name: "Investor",
+              email: "investor@example.com",
+              contact: "9999999999"
+            },
+            theme: {
+              color: "#3399cc"
+            }
+          };
+          
+          const rzp1 = new window.Razorpay(options);
+          rzp1.on('payment.failed', function (response){
+            console.error(response.error);
+            setTxMessage({ type: 'error', text: response.error.description });
+          });
+          rzp1.open();
+          
+          // Note: we don't close modal here, wait for payment handler
         }
-
-        setShowTxModal(false);
-        setShowSuccessModal(true);
       } else {
         await sellFund({ ...payload, unitsToSell: Number(txAmount) / latestNav, currentNav: latestNav });
         setTxMessage({ type: 'success', text: `Successfully sold ${payload.schemeName}` });
