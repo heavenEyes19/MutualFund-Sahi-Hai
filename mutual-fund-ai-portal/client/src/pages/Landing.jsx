@@ -1,21 +1,6 @@
 import { Link } from "react-router-dom";
-import { useEffect, useRef, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import useDarkMode from "../hooks/useDarkMode";
-
-const GridPattern = () => (
-  <svg
-    className="absolute inset-0 w-full h-full opacity-[0.04]"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    <defs>
-      <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#0f4c81" strokeWidth="1" />
-      </pattern>
-    </defs>
-    <rect width="100%" height="100%" fill="url(#grid)" />
-  </svg>
-);
 
 const DonutChart = () => {
   const segments = [
@@ -125,14 +110,6 @@ const FundCard = ({ name, category, returns, positive, badge }) => (
       </div>
       <MiniSparkline color={positive ? "#0da870" : "#e05c3a"} positive={positive} />
     </div>
-  </div>
-);
-
-const StatBadge = ({ icon, value, label }) => (
-  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-    <div style={{ fontSize: 22 }}>{icon}</div>
-    <div style={{ fontSize: 20, fontWeight: 700, color: "#0f172a", fontFamily: "'DM Sans', sans-serif" }}>{value}</div>
-    <div style={{ fontSize: 11, color: "#94a3b8", fontFamily: "'DM Sans', sans-serif", textAlign: "center" }}>{label}</div>
   </div>
 );
 

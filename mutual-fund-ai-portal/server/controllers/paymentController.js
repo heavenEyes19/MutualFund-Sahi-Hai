@@ -3,6 +3,11 @@ import crypto from "crypto";
 import Transaction from "../models/Transaction.js";
 import Holding from "../models/Holding.js";
 
+const parsePositiveNav = (value) => {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+};
+
 export const createOrder = async (req, res) => {
   try {
     const { amount } = req.body;
@@ -43,6 +48,13 @@ export const verifyPayment = async (req, res) => {
       amount,
       nav,
     } = req.body;
+    const validNav = parsePositiveNav(nav);
+
+    if (!validNav) {
+      return res.status(400).json({
+        message: "Live NAV data is unavailable for this scheme. Transaction cannot proceed.",
+      });
+    }
 
     const user = req.user.id; // from auth middleware
 
@@ -57,7 +69,7 @@ export const verifyPayment = async (req, res) => {
     }
 
     // Add transaction
-    const units = parseFloat((amount / nav).toFixed(4));
+    const units = parseFloat((amount / validNav).toFixed(4));
     
     const newTransaction = new Transaction({
       user,
@@ -65,7 +77,7 @@ export const verifyPayment = async (req, res) => {
       schemeName,
       type: "BUY",
       amount,
-      nav,
+      nav: validNav,
       units,
     });
     await newTransaction.save();
@@ -83,7 +95,7 @@ export const verifyPayment = async (req, res) => {
         schemeCode,
         schemeName,
         units,
-        avgNav: nav,
+        avgNav: validNav,
         investedAmount: amount,
       });
       await holding.save();

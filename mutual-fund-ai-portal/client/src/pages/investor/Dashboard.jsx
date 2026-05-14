@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { BarChart3, TrendingUp, Wallet, PieChart, Upload, CheckCircle2, XCircle, Clock, AlertCircle } from 'lucide-react';
+import { BarChart3, TrendingUp, TrendingDown, Wallet, PieChart, Upload, CheckCircle2, XCircle, Clock, AlertCircle } from 'lucide-react';
 import useAuthStore from '../../store/useAuthStore';
 import kycService from '../../services/kycService';
+import API from '../../services/api';
 
 /**
  * Investor Dashboard - Main dashboard for investor role
@@ -10,10 +11,11 @@ import kycService from '../../services/kycService';
 const InvestorDashboard = () => {
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState('overview');
-  const [kycData, setKycData] = useState(null);
+
   const [kycStatus, setKycStatus] = useState('Not Submitted'); // Pending, Approved, Rejected, Not Submitted
   const [isLoading, setIsLoading] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [portfolioData, setPortfolioData] = useState(null);
   
   // Form State
   const [formData, setFormData] = useState({
@@ -24,19 +26,32 @@ const InvestorDashboard = () => {
     submissionPhoto: null
   });
 
-  useEffect(() => {
-    fetchKYCStatus();
-  }, []);
+  const fetchPortfolio = async () => {
+    try {
+      const res = await API.get('/portfolio');
+      setPortfolioData(res.data);
+    } catch (error) {
+      console.error("Error fetching portfolio data", error);
+    }
+  };
 
   const fetchKYCStatus = async () => {
     try {
       const data = await kycService.getKYCStatus();
       setKycStatus(data.status);
-      setKycData(data.kyc);
     } catch (error) {
       console.error("Error fetching KYC status", error);
     }
   };
+
+  useEffect(() => {
+    setTimeout(() => {
+      fetchKYCStatus();
+      fetchPortfolio();
+    }, 0);
+  }, []);
+
+
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -85,7 +100,12 @@ const InvestorDashboard = () => {
     }
   };
 
-  const renderOverview = () => (
+  const renderOverview = () => {
+    const overview = portfolioData?.overview || {};
+    const holdings = portfolioData?.holdings || [];
+    const isPositiveReturn = (overview.totalReturns || 0) >= 0;
+
+    return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700 transition-colors">
@@ -96,10 +116,10 @@ const InvestorDashboard = () => {
             <Wallet className="text-blue-500" size={24} />
           </div>
           <p className="text-2xl font-bold text-gray-900 dark:text-white">
-            ₹5,24,000
+            ₹{(overview.currentValue || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
           </p>
-          <p className="text-sm text-green-600 dark:text-green-400 mt-2">
-            ↑ 12.5% this year
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+            Current Market Value
           </p>
         </div>
 
@@ -111,10 +131,10 @@ const InvestorDashboard = () => {
             <PieChart className="text-purple-500" size={24} />
           </div>
           <p className="text-2xl font-bold text-gray-900 dark:text-white">
-            ₹4,65,000
+            ₹{(overview.totalInvested || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
           </p>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-            Across 8 funds
+            Principal Amount
           </p>
         </div>
 
@@ -123,26 +143,30 @@ const InvestorDashboard = () => {
             <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">
               Gains & Losses
             </h3>
-            <TrendingUp className="text-green-500" size={24} />
+            {isPositiveReturn ? (
+              <TrendingUp className="text-green-500" size={24} />
+            ) : (
+              <TrendingDown className="text-red-500" size={24} />
+            )}
           </div>
           <p className="text-2xl font-bold text-gray-900 dark:text-white">
-            +₹59,000
+            {isPositiveReturn ? '+' : '-'}₹{Math.abs(overview.totalReturns || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
           </p>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-            12.7% return
+          <p className={`text-sm mt-2 ${isPositiveReturn ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+            {isPositiveReturn ? '+' : ''}{(overview.totalReturnsPercent || 0).toFixed(2)}% return
           </p>
         </div>
 
         <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700 transition-colors">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">
-              Active SIPs
+              Active Holdings
             </h3>
             <BarChart3 className="text-orange-500" size={24} />
           </div>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">3</p>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">{holdings.length}</p>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-            ₹15,000/month
+            Mutual Funds
           </p>
         </div>
       </div>
@@ -157,6 +181,7 @@ const InvestorDashboard = () => {
       </div>
     </>
   );
+  };
 
   const renderKYC = () => {
     if (kycStatus === 'Approved') {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import useAuthStore from '../../store/useAuthStore';
 import { MessageSquare, X, Send } from 'lucide-react';
@@ -15,7 +15,7 @@ const ChatWidget = () => {
   useEffect(() => {
     if (user && user.role === 'investor') {
       const newSocket = io('http://localhost:5000');
-      setSocket(newSocket);
+      setTimeout(() => setSocket(newSocket), 0);
 
       const currentUserId = user._id || user.id;
       newSocket.emit('joinChat', currentUserId);

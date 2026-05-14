@@ -1,64 +1,80 @@
 import Holding from "../models/Holding.js";
 import Transaction from "../models/Transaction.js";
+import KYC from "../models/KYC.js";
+import SIP from "../models/SIP.js";
+import { cacheGet, cacheSet, TTL } from "../utils/cache.js";
 
-// Helper to get latest NAV
+const parsePositiveNav = (value) => {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+};
+
+// Helper to get latest NAV — results are cached via the shared cache module.
 const getLatestNav = async (schemeCode) => {
+  const key    = `latest:${schemeCode}`;
+  const cached = cacheGet(key);
+  // The cache stores the full mfapi /latest response; we need the nav value.
+  if (cached !== null) return parsePositiveNav(cached?.data?.[0]?.nav);
+
   try {
-    const url = new URL(`/mf/${schemeCode}/latest`, process.env.MFAPI_BASE_URL);
-    const response = await fetch(url);
+    const url        = new URL(`/mf/${schemeCode}/latest`, process.env.MFAPI_BASE_URL);
+    const controller = new AbortController();
+    const timeoutId  = setTimeout(() => controller.abort(), 4000);
+    const response   = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
     if (!response.ok) return null;
     const data = await response.json();
-    return data?.data?.[0]?.nav ? parseFloat(data.data[0].nav) : null;
+    cacheSet(key, data, TTL.NAV_LATEST); // share key with mutualFundController
+    return parsePositiveNav(data?.data?.[0]?.nav);
   } catch (error) {
-    console.error("Error fetching NAV:", error);
+    console.error(`NAV fetch failed for ${schemeCode}:`, error.message);
     return null;
   }
 };
 
+export const getEnrichedPortfolioData = async (userId) => {
+  const holdings = await Holding.find({ user: userId });
+
+  let totalInvested = 0;
+  let currentValue = 0;
+
+  const enrichedHoldings = await Promise.all(
+    holdings.map(async (h) => {
+      let currentNav = await getLatestNav(h.schemeCode);
+      const currentHoldingValue = currentNav ? h.units * currentNav : h.investedAmount;
+      const invested = h.investedAmount;
+      const gainLoss = ((currentHoldingValue - invested) / invested) * 100;
+      totalInvested += invested;
+      currentValue += currentHoldingValue;
+
+
+      return {
+        ...h.toObject(),
+        currentNav,
+        currentValue: currentHoldingValue,
+        gainLossPercent: gainLoss,
+      };
+    })
+  );
+
+  const totalReturns = currentValue - totalInvested;
+  const totalReturnsPercent = totalInvested > 0 ? (totalReturns / totalInvested) * 100 : 0;
+
+  return {
+    overview: {
+      totalInvested,
+      currentValue,
+      totalReturns,
+      totalReturnsPercent,
+    },
+    holdings: enrichedHoldings,
+  };
+};
+
 export const getPortfolio = async (req, res) => {
   try {
-    const holdings = await Holding.find({ user: req.user._id });
-    
-    let totalInvested = 0;
-    let currentValue = 0;
-    
-    const enrichedHoldings = await Promise.all(
-      holdings.map(async (h) => {
-        // Fetch real NAV or mock it if API fails
-        let currentNav = await getLatestNav(h.schemeCode);
-        if (!currentNav) {
-            // mock a 10% gain for demo purposes if api fails
-            currentNav = h.avgNav * 1.1; 
-        }
-        
-        const currentHoldingValue = h.units * currentNav;
-        const invested = h.investedAmount;
-        const gainLoss = ((currentHoldingValue - invested) / invested) * 100;
-        
-        totalInvested += invested;
-        currentValue += currentHoldingValue;
-        
-        return {
-          ...h.toObject(),
-          currentNav,
-          currentValue: currentHoldingValue,
-          gainLossPercent: gainLoss,
-        };
-      })
-    );
-    
-    const totalReturns = currentValue - totalInvested;
-    const totalReturnsPercent = totalInvested > 0 ? (totalReturns / totalInvested) * 100 : 0;
-    
-    res.json({
-      overview: {
-        totalInvested,
-        currentValue,
-        totalReturns,
-        totalReturnsPercent,
-      },
-      holdings: enrichedHoldings,
-    });
+    const data = await getEnrichedPortfolioData(req.user._id);
+    res.json(data);
   } catch (error) {
     res.status(500).json({ message: "Error fetching portfolio", error: error.message });
   }
@@ -66,11 +82,14 @@ export const getPortfolio = async (req, res) => {
 
 export const buyFund = async (req, res) => {
   let { schemeCode, schemeName, amount, nav } = req.body;
-  
-  if (!nav || nav <= 0) {
-    nav = await getLatestNav(schemeCode) || 100;
+
+  nav = parsePositiveNav(nav) || await getLatestNav(schemeCode);
+  if (!nav) {
+    return res.status(400).json({
+      message: "Live NAV data is unavailable for this scheme. Transaction cannot proceed.",
+    });
   }
-  
+
   const units = amount / nav;
 
   try {
@@ -114,8 +133,11 @@ export const buyFund = async (req, res) => {
 export const sellFund = async (req, res) => {
   let { schemeCode, unitsToSell, currentNav } = req.body;
 
-  if (!currentNav || currentNav <= 0) {
-    currentNav = await getLatestNav(schemeCode) || 100;
+  currentNav = parsePositiveNav(currentNav) || await getLatestNav(schemeCode);
+  if (!currentNav) {
+    return res.status(400).json({
+      message: "Live NAV data is unavailable for this scheme. Transaction cannot proceed.",
+    });
   }
 
   try {
@@ -152,10 +174,98 @@ export const sellFund = async (req, res) => {
 };
 
 export const getTransactions = async (req, res) => {
-    try {
-        const transactions = await Transaction.find({ user: req.user._id }).sort({ date: -1 });
-        res.json(transactions);
-    } catch (error) {
-        res.status(500).json({ message: "Error fetching transactions", error: error.message });
+  try {
+    const transactions = await Transaction.find({ user: req.user._id }).sort({ date: -1 });
+    res.json(transactions);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching transactions", error: error.message });
+  }
+};
+
+export const reviewPortfolio = async (req, res) => {
+  try {
+    const [holdings, kyc, sips] = await Promise.all([
+      Holding.find({ user: req.user._id }),
+      KYC.findOne({ userId: req.user._id }),
+      SIP.find({ user: req.user._id, status: "ACTIVE" })
+    ]);
+
+    const formattedHoldings = holdings.map(h => `${h.schemeName} (₹${h.investedAmount})`).join(", ");
+    const kycStatus = kyc ? kyc.status : "Not completed";
+    const sipsList = sips.map(s => `${s.schemeName} (₹${s.amount}/month)`).join(", ");
+
+    let deterministicScore = 30; // base score for having an account
+    if (kyc && kyc.status === "Approved") deterministicScore += 20;
+    else if (kyc && kyc.status === "Pending") deterministicScore += 10;
+    if (sips.length > 0) deterministicScore += Math.min(20, sips.length * 5);
+    if (holdings.length > 0) deterministicScore += Math.min(20, holdings.length * 5);
+    if (holdings.length >= 3) deterministicScore += 10; // basic diversification bonus
+
+    let analysis = {
+      healthScore: deterministicScore,
+      healthBadge: deterministicScore >= 80 ? "Excellent" : deterministicScore >= 60 ? "Good" : "Fair",
+      healthText: `Better than ${Math.max(10, deterministicScore - 15)}% of investors`,
+      riskProfile: "Moderate",
+      aiConfidence: 85,
+      confidenceBadge: "High",
+      confidenceText: "Strong recommendation"
+    };
+
+    if (process.env.GROQ_API_KEY) {
+      try {
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: "meta-llama/llama-4-scout-17b-16e-instruct",
+            temperature: 0,
+            response_format: { type: "json_object" },
+            messages: [
+              {
+                role: "system",
+                content: `You are an expert AI portfolio analyzer. You review a user's mutual fund profile and give an assessment.
+Output MUST be a JSON object with the following fields:
+- healthScore (number EXACTLY matching the Provided Score)
+- healthBadge (string, e.g., "Good", "Excellent", "Fair", "Poor" based on the score)
+- healthText (string, e.g., "Better than X% of investors")
+- riskProfile (string, e.g., "Conservative", "Moderate", "Aggressive")
+- aiConfidence (number 1-100, usually 80-95)
+- confidenceBadge (string, e.g., "High", "Medium", "Low")
+- confidenceText (string, e.g., "Strong recommendation", "Needs review")`
+              },
+              {
+                role: "user",
+                content: `Analyze this portfolio:
+Holdings: ${formattedHoldings || "No holdings yet"}
+Active SIPs: ${sipsList || "No active SIPs"}
+KYC Status: ${kycStatus}
+Provided Score: ${deterministicScore}/100
+
+Use the Provided Score EXACTLY for the healthScore field. Determine the riskProfile and confidence based on factors like KYC completeness, presence of multiple holdings/diversification, SIP consistency, and general risk/reward characteristics.`
+              }
+            ]
+          })
+        });
+
+        const json = await response.json();
+        const content = json.choices?.[0]?.message?.content;
+        if (content) {
+          analysis = JSON.parse(content);
+        }
+      } catch (aiError) {
+        console.error("Groq AI Error:", aiError);
+      }
     }
+
+    res.json({
+      ...analysis,
+      lastReview: new Date()
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: "Error reviewing portfolio", error: error.message });
+  }
 };

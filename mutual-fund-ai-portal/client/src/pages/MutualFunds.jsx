@@ -1,10 +1,10 @@
 import { useEffect, useState, useMemo } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Search, TrendingUp, TrendingDown, Info, ShieldAlert, CheckCircle2, Wallet, X, Sparkles, Star } from "lucide-react";
-import { motion } from "framer-motion";
+import { Search, TrendingUp, TrendingDown, ShieldAlert, CheckCircle2, Wallet, X, Sparkles, Activity, PieChart as PieChartIcon, Calendar, ArrowRight, Archive } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -20,7 +20,7 @@ import {
   listMutualFunds,
   searchMutualFunds,
 } from "../services/mutualFunds";
-import { getPortfolio, buyFund, sellFund, createSIP, createRazorpayOrder, verifyRazorpayPayment } from "../services/portfolio";
+import { getPortfolio, sellFund, createSIP, createRazorpayOrder, verifyRazorpayPayment } from "../services/portfolio";
 
 // Utility functions
 const parseNumber = (value) => {
@@ -41,8 +41,18 @@ const formatNavDate = (value) => {
 
 const formatNavValue = (value) => {
   const parsedValue = parseNumber(value);
-  if (parsedValue === null) return "--";
+  if (parsedValue === null || parsedValue <= 0) return "NAV Unavailable";
   return `₹${parsedValue.toFixed(4)}`;
+};
+
+// Returns the age in years of a NAV date string in "DD-MM-YYYY" format.
+const getNavAgeYears = (navDateStr) => {
+  if (!navDateStr) return Infinity;
+  const parts = navDateStr.split("-").map(Number);
+  if (parts.length !== 3) return Infinity;
+  const [day, month, year] = parts;
+  const navDate = new Date(year, month - 1, day);
+  return (Date.now() - navDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
 };
 
 const getSchemeBadges = (schemeName = "") => {
@@ -61,21 +71,23 @@ const generatePieData = (category) => {
     return [
       { name: 'Corporate Bonds', value: 60, color: '#3b82f6' },
       { name: 'Govt Securities', value: 30, color: '#10b981' },
-      { name: 'Cash', value: 10, color: '#f59e0b' }
+      { name: 'Cash', value: 10, color: '#8b5cf6' }
     ];
   }
   return [
     { name: 'Large Cap', value: 50, color: '#3b82f6' },
     { name: 'Mid Cap', value: 30, color: '#8b5cf6' },
     { name: 'Small Cap', value: 15, color: '#ec4899' },
-    { name: 'Cash', value: 5, color: '#f59e0b' }
+    { name: 'Cash', value: 5, color: '#10b981' }
   ];
 };
 
 export default function MutualFunds() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [query, setQuery] = useState(searchParams.get("q") || "");
-  const [funds, setFunds] = useState([]);
+  const [funds, setFunds] = useState({ active: [], historical: [] });
+  const [activeTab, setActiveTab] = useState("active"); // "active" | "historical"
+  const [tabCounts, setTabCounts] = useState({ active: 0, historical: 0 });
   const [selectedSchemeCode, setSelectedSchemeCode] = useState(searchParams.get("scheme") || "");
   const [listLoading, setListLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -91,13 +103,12 @@ export default function MutualFunds() {
   const [txMessage, setTxMessage] = useState(null); // { type: 'success'|'error', text: '' }
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  const [showAIPopup, setShowAIPopup] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     const q = searchParams.get("q");
     if (q !== null && q !== query) {
-      setQuery(q);
+      setTimeout(() => setQuery(q), 0);
     }
   }, [searchParams]);
 
@@ -127,8 +138,10 @@ export default function MutualFunds() {
   useEffect(() => {
     const trimmedQuery = query.trim();
     if (trimmedQuery.length === 1) {
-      setFunds([]);
-      setListLoading(false);
+      setTimeout(() => {
+        setFunds([]);
+        setListLoading(false);
+      }, 0);
       return;
     }
 
@@ -144,16 +157,21 @@ export default function MutualFunds() {
 
         if (!active) return;
 
-        const nextFunds = Array.isArray(response?.schemes) ? response.schemes : [];
-        setFunds(nextFunds);
+        const activeList    = Array.isArray(response?.active)    ? response.active    : [];
+        const historicalList = Array.isArray(response?.historical) ? response.historical : [];
+        setFunds({ active: activeList, historical: historicalList });
+        setTabCounts(response?.counts ?? { active: activeList.length, historical: historicalList.length });
 
-        const hasSelectedFund = nextFunds.some((f) => String(f.schemeCode) === String(selectedSchemeCode));
-        if ((!selectedSchemeCode || (trimmedQuery.length >= 2 && !hasSelectedFund)) && nextFunds[0]) {
-          setSelectedSchemeCode(String(nextFunds[0].schemeCode));
+        // Auto-select: pick from whichever tab is currently shown
+        const currentList = activeTab === "active" ? activeList : historicalList;
+        const hasSelected = currentList.some((f) => String(f.schemeCode) === String(selectedSchemeCode));
+        if ((!selectedSchemeCode || (trimmedQuery.length >= 2 && !hasSelected)) && currentList[0]) {
+          setSelectedSchemeCode(String(currentList[0].schemeCode));
         }
       } catch (error) {
         if (error?.name !== "CanceledError") {
-          setFunds([]);
+          setFunds({ active: [], historical: [] });
+          setTabCounts({ active: 0, historical: 0 });
         }
       } finally {
         if (active) setListLoading(false);
@@ -170,7 +188,7 @@ export default function MutualFunds() {
 
   useEffect(() => {
     if (!selectedSchemeCode) {
-      setSelectedFund(null);
+      setTimeout(() => setSelectedFund(null), 0);
       return;
     }
 
@@ -201,8 +219,13 @@ export default function MutualFunds() {
 
   const chartData = useMemo(() => {
     if (!selectedFund?.data) return [];
-    return selectedFund.data
-      .slice(0, 30)
+    // To prevent Recharts from lagging with 5000+ points, we can sample the data for MAX view
+    // if there's a lot of data, we take roughly 1 point per week
+    const data = selectedFund.data;
+    const step = Math.max(1, Math.floor(data.length / 300));
+    
+    return data
+      .filter((_, i) => i % step === 0)
       .reverse()
       .map(entry => ({
         date: formatNavDate(entry.date),
@@ -210,6 +233,11 @@ export default function MutualFunds() {
       }))
       .filter(entry => entry.nav !== null);
   }, [selectedFund]);
+
+  const displayedFunds = useMemo(
+    () => (activeTab === "active" ? funds.active : funds.historical) ?? [],
+    [activeTab, funds]
+  );
 
   const pieData = useMemo(() => {
     return generatePieData(selectedFund?.meta?.scheme_category);
@@ -287,7 +315,7 @@ export default function MutualFunds() {
               contact: "9999999999"
             },
             theme: {
-              color: "#3399cc"
+              color: "#3b82f6"
             }
           };
           
@@ -297,8 +325,6 @@ export default function MutualFunds() {
             setTxMessage({ type: 'error', text: response.error.description });
           });
           rzp1.open();
-          
-          // Note: we don't close modal here, wait for payment handler
         }
       } else {
         await sellFund({ ...payload, unitsToSell: Number(txAmount) / latestNav, currentNav: latestNav });
@@ -325,282 +351,472 @@ export default function MutualFunds() {
   };
 
   const hasHolding = portfolioHoldings.some(h => String(h.schemeCode) === String(selectedSchemeCode));
-  const latestNav = parseNumber(selectedFund?.data?.[0]?.nav) || 100;
+  const currentHolding = portfolioHoldings.find(h => String(h.schemeCode) === String(selectedSchemeCode)) ?? null;
+  const latestNavRaw = parseNumber(selectedFund?.data?.[0]?.nav);
+  const latestNav = latestNavRaw && latestNavRaw > 0 ? latestNavRaw : 0;
+
+  // Detect inactive / archived funds: latest NAV date is older than 3 years
+  const latestNavDate = selectedFund?.data?.[0]?.date ?? selectedFund?.latest?.date;
+  const navAgeYears = getNavAgeYears(latestNavDate);
+  const isInactive = navAgeYears > 3;
+  
+  const performanceMetrics = useMemo(() => {
+    if (!selectedFund?.data || selectedFund.data.length < 2) {
+      return { _1y: "--", _3y: "--", _5y: "--", navChange: "--", isNavChangePositive: true };
+    }
+    
+    const data = selectedFund.data;
+    const latestNavCalc = parseNumber(data[0].nav);
+    const prevNavCalc = parseNumber(data[1].nav);
+    
+    if (!latestNavCalc || !prevNavCalc) return { _1y: "--", _3y: "--", _5y: "--", navChange: "--", isNavChangePositive: true };
+
+    const navChangePercent = ((latestNavCalc - prevNavCalc) / prevNavCalc) * 100;
+    const isNavChangePositive = navChangePercent >= 0;
+    const navChangeStr = `${isNavChangePositive ? '+' : ''}${navChangePercent.toFixed(2)}%`;
+
+    const getNavAtDaysAgo = (days) => {
+      const [d, m, y] = data[0].date.split('-');
+      const targetDate = new Date(y, m - 1, d);
+      targetDate.setDate(targetDate.getDate() - days);
+      
+      let closestNav = null;
+      let minDiff = Infinity;
+      
+      for (let entry of data) {
+        const [ed, em, ey] = entry.date.split('-');
+        const entryDate = new Date(ey, em - 1, ed);
+        const diff = Math.abs(targetDate - entryDate);
+        if (diff < minDiff) {
+          minDiff = diff;
+          closestNav = parseNumber(entry.nav);
+        }
+      }
+      
+      if (minDiff <= 15 * 24 * 60 * 60 * 1000 && closestNav) {
+        return closestNav;
+      }
+      return null;
+    };
+
+    const calcCagr = (navAtDate, years) => {
+      if (!navAtDate) return "--";
+      const cagr = (Math.pow(latestNavCalc / navAtDate, 1 / years) - 1) * 100;
+      return `${cagr >= 0 ? '+' : ''}${cagr.toFixed(2)}%`;
+    };
+
+    return {
+      _1y: calcCagr(getNavAtDaysAgo(365), 1),
+      _3y: calcCagr(getNavAtDaysAgo(3 * 365), 3),
+      _5y: calcCagr(getNavAtDaysAgo(5 * 365), 5),
+      navChange: navChangeStr,
+      isNavChangePositive
+    };
+  }, [selectedFund]);
+
+  const { navChange, isNavChangePositive } = performanceMetrics;
 
   return (
-    <div className="w-full h-full overflow-y-auto">
-      <div className="p-4 lg:p-8 max-w-[90rem] mx-auto">
-        <div className="flex justify-between items-start mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Mutual Funds Listing</h1>
-            <p className="text-gray-600 dark:text-gray-400">Discover and manage mutual fund investments.</p>
-          </div>
-        </div>
-
-        {/* AI Insights Banner */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          onClick={() => setShowAIPopup(true)}
-          className="mb-8 p-5 bg-gradient-to-r from-indigo-900 to-purple-900 rounded-2xl shadow-xl flex items-center justify-between border border-indigo-800 relative overflow-hidden cursor-pointer hover:shadow-indigo-500/20 transition-shadow group"
-        >
-          <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-purple-500 rounded-full opacity-20 blur-xl group-hover:opacity-30 transition-opacity"></div>
-          <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-24 h-24 bg-indigo-500 rounded-full opacity-20 blur-xl group-hover:opacity-30 transition-opacity"></div>
-
-          <div className="flex items-center space-x-4 z-10">
-            <div className="bg-white/10 p-3 rounded-full backdrop-blur-sm">
-              <Sparkles className="text-indigo-300" size={24} />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-white mb-1">AI Fund Recommendations 🔥</h3>
-              <p className="text-indigo-200 text-sm">
-                Click here to see today's top picks powered by our advanced AI advisory engine.
-              </p>
-            </div>
-          </div>
-          <div className="z-10 bg-white/10 hover:bg-white/20 text-white text-sm px-4 py-2 rounded-lg font-medium transition-colors backdrop-blur-sm">
-            View Picks
-          </div>
-        </motion.div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Sidebar List */}
-          <div className="lg:col-span-1 flex flex-col gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+    <div className="w-full h-full bg-[#0B1120] text-slate-200 flex flex-col font-sans overflow-hidden">
+      <div className="flex-1 w-full max-w-[100rem] mx-auto p-4 lg:p-6 flex flex-col lg:flex-row gap-6 min-h-0">
+        
+        {/* LEFT PANEL: Search and List */}
+        <div className="w-full lg:w-[340px] shrink-0 flex flex-col bg-[#111827]/80 backdrop-blur-md border border-slate-800/80 rounded-2xl overflow-hidden shadow-2xl">
+          {/* Search header */}
+          <div className="p-5 border-b border-slate-800/80 bg-[#1e293b]/30">
+            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+              <Sparkles className="text-blue-500 fill-blue-500/20" size={20} />
+              Discover Funds
+            </h2>
+            <div className="relative group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors" size={18} />
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search by AMC, scheme name..."
-                className="w-full pl-10 pr-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow dark:text-white"
+                className="w-full pl-10 pr-4 py-2.5 bg-[#0B1120] border border-slate-700/50 rounded-xl focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm outline-none placeholder:text-slate-600"
               />
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden flex flex-col min-h-[500px] max-h-[800px]">
-              <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex justify-between items-center">
-                <span className="font-semibold text-gray-700 dark:text-gray-300">Schemes</span>
-                <span className="text-sm px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-full">
-                  {funds.length} found
-                </span>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                {listLoading ? (
-                  <div className="p-4 text-center text-gray-500 dark:text-gray-400">Loading...</div>
-                ) : funds.length > 0 ? (
-                  funds.map(fund => {
-                    const isSelected = String(fund.schemeCode) === selectedSchemeCode;
-                    return (
-                      <button
-                        key={fund.schemeCode}
-                        onClick={() => setSelectedSchemeCode(String(fund.schemeCode))}
-                        className={`w-full text-left p-4 rounded-lg transition-all ${isSelected
-                          ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-500 dark:border-blue-400 shadow-sm'
-                          : 'hover:bg-gray-50 dark:hover:bg-gray-700/50 border-transparent hover:border-gray-200 dark:hover:border-gray-600'
-                          } border`}
-                      >
-                        <h4 className={`font-semibold text-sm line-clamp-2 ${isSelected ? 'text-blue-700 dark:text-blue-300' : 'text-gray-800 dark:text-gray-200'}`}>
-                          {fund.schemeName}
-                        </h4>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Code: {fund.schemeCode}</p>
-                      </button>
-                    )
-                  })
-                ) : (
-                  <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-                    <Info className="mx-auto mb-2 opacity-50" size={24} />
-                    <p>No schemes found</p>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
 
-          {/* Detail Panel */}
-          <div className="lg:col-span-2">
-            {detailLoading ? (
-              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-8 text-center min-h-[500px] flex items-center justify-center">
-                <span className="text-gray-500 dark:text-gray-400">Loading details...</span>
+          {/* Active / Historical tabs */}
+          <div className="flex border-b border-slate-800/80 shrink-0">
+            {[
+              { id: "active",     label: "Active",     count: tabCounts.active },
+              { id: "historical", label: "Historical",  count: tabCounts.historical },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  // Auto-select first fund in the new tab
+                  const list = tab.id === "active" ? funds.active : funds.historical;
+                  if (list?.[0]) setSelectedSchemeCode(String(list[0].schemeCode));
+                }}
+                className={`flex-1 py-2.5 text-xs font-semibold tracking-wide transition-all relative ${
+                  activeTab === tab.id
+                    ? tab.id === "active"
+                      ? "text-blue-400"
+                      : "text-amber-400"
+                    : "text-slate-500 hover:text-slate-300"
+                }`}
+              >
+                {tab.label}
+                {tabCounts[tab.id] > 0 && (
+                  <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                    activeTab === tab.id
+                      ? tab.id === "active" ? "bg-blue-500/20 text-blue-300" : "bg-amber-500/20 text-amber-300"
+                      : "bg-slate-800 text-slate-500"
+                  }`}>
+                    {tabCounts[tab.id]}
+                  </span>
+                )}
+                {activeTab === tab.id && (
+                  <span className={`absolute bottom-0 left-0 right-0 h-0.5 ${
+                    tab.id === "active" ? "bg-blue-500" : "bg-amber-500"
+                  }`} />
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Fund list */}
+          <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
+            {listLoading ? (
+              <div className="flex flex-col gap-3">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="animate-pulse bg-slate-800/50 h-20 rounded-xl"></div>
+                ))}
               </div>
-            ) : selectedFund ? (
-              <div className="space-y-6">
-                {/* Header Card */}
-                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 relative overflow-hidden">
-                  <div className="relative z-10 flex flex-col md:flex-row md:items-start justify-between gap-6">
-                    <div>
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        {getSchemeBadges(selectedFund.meta.scheme_name).map(b => (
-                          <span key={b} className="text-xs font-semibold px-2.5 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full">
-                            {b}
-                          </span>
-                        ))}
-                        <span className="text-xs font-semibold px-2.5 py-1 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full">
-                          {selectedFund.meta.scheme_category}
-                        </span>
-                      </div>
-                      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                        {selectedFund.meta.scheme_name}
-                      </h2>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Fund House: {selectedFund.meta.fund_house}</p>
-                    </div>
-
-                    <div className="flex-shrink-0 bg-gray-50 dark:bg-gray-900 rounded-xl p-4 min-w-[140px] text-center border border-gray-100 dark:border-gray-700">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Latest NAV</p>
-                      <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                        {formatNavValue(latestNav)}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        As of {formatNavDate(selectedFund.data[0]?.date)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="mt-6 flex flex-wrap gap-3 relative z-10">
-                    <button
-                      onClick={() => { setTxType('buy'); setShowTxModal(true); }}
-                      className="flex-1 sm:flex-none px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
-                    >
-                      <Wallet size={18} />
-                      Buy Fund
-                    </button>
-                    {hasHolding && (
-                      <button
-                        onClick={() => { setTxType('sell'); setShowTxModal(true); }}
-                        className="flex-1 sm:flex-none px-6 py-2.5 bg-white dark:bg-gray-800 border border-red-500 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
-                      >
-                        <TrendingDown size={18} />
-                        Sell Fund
-                      </button>
+            ) : displayedFunds.length > 0 ? (
+              displayedFunds.map(fund => {
+                const isSelected = String(fund.schemeCode) === selectedSchemeCode;
+                return (
+                  <button
+                    key={fund.schemeCode}
+                    onClick={() => setSelectedSchemeCode(String(fund.schemeCode))}
+                    className={`w-full text-left p-4 rounded-xl transition-all duration-300 relative overflow-hidden group ${
+                      isSelected
+                        ? activeTab === "active"
+                          ? "bg-gradient-to-r from-blue-600/20 to-purple-600/10 border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.1)]"
+                          : "bg-gradient-to-r from-amber-600/15 to-orange-600/10 border-amber-500/40"
+                        : "bg-transparent border-transparent hover:bg-slate-800/50 hover:border-slate-700/50"
+                    } border`}
+                  >
+                    {isSelected && (
+                      <div className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-xl ${
+                        activeTab === "active" ? "bg-blue-500" : "bg-amber-500"
+                      }`} />
                     )}
-                  </div>
-                </div>
-
-                {/* Charts Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* NAV Chart */}
-                  <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                      <TrendingUp size={20} className="text-blue-500" />
-                      NAV History (30 Days)
-                    </h3>
-                    <div className="h-64">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={chartData}>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.2} />
-                          <XAxis
-                            dataKey="date"
-                            tick={{ fill: '#6B7280', fontSize: 12 }}
-                            tickLine={false}
-                            axisLine={false}
-                            minTickGap={30}
-                          />
-                          <YAxis
-                            domain={['auto', 'auto']}
-                            tick={{ fill: '#6B7280', fontSize: 12 }}
-                            tickLine={false}
-                            axisLine={false}
-                            tickFormatter={(val) => `₹${val}`}
-                          />
-                          <RechartsTooltip
-                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                            formatter={(value) => [`₹${value}`, 'NAV']}
-                          />
-                          <Line type="monotone" dataKey="nav" stroke="#3b82f6" strokeWidth={3} dot={false} activeDot={{ r: 6 }} />
-                        </LineChart>
-                      </ResponsiveContainer>
+                    <h4 className={`font-semibold text-sm line-clamp-2 leading-snug mb-1.5 transition-colors ${
+                      isSelected ? "text-white" : "text-slate-300 group-hover:text-white"
+                    }`}>
+                      {fund.schemeName}
+                    </h4>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] text-slate-500 font-medium">CODE: {fund.schemeCode}</p>
+                      {activeTab === "historical" && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                          ARCHIVED
+                        </span>
+                      )}
+                      {activeTab === "active" && (
+                        <ArrowRight size={14} className={`transition-transform duration-300 ${
+                          isSelected ? "text-blue-400 translate-x-0 opacity-100" : "-translate-x-2 opacity-0 text-slate-600 group-hover:opacity-100 group-hover:translate-x-0"
+                        }`} />
+                      )}
                     </div>
-                  </div>
-
-                  {/* Simulated Asset Allocation */}
-                  <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                      <PieChart size={20} className="text-purple-500" />
-                      Asset Allocation (Simulated)
-                    </h3>
-                    <div className="h-64 relative">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={pieData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={60}
-                            outerRadius={80}
-                            paddingAngle={5}
-                            dataKey="value"
-                          >
-                            {pieData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <RechartsTooltip
-                            formatter={(value) => [`${value}%`, 'Allocation']}
-                            contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
-                      {/* Legend */}
-                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-                        <span className="text-2xl font-bold text-gray-900 dark:text-white">100%</span>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap justify-center gap-4 mt-2">
-                      {pieData.map(d => (
-                        <div key={d.name} className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
-                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: d.color }}></div>
-                          {d.name} ({d.value}%)
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
+                  </button>
+                );
+              })
             ) : (
-              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-12 text-center min-h-[500px] flex flex-col items-center justify-center">
-                <Search className="text-gray-300 dark:text-gray-600 mb-4" size={48} />
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Select a Scheme</h3>
-                <p className="text-gray-500 dark:text-gray-400 max-w-md">
-                  Search and select a mutual fund scheme from the list on the left to view detailed NAV history and analytics.
+              <div className="h-full flex flex-col items-center justify-center text-slate-500 p-6 text-center">
+                <Search size={32} className="mb-3 opacity-20" />
+                <p className="text-sm">
+                  {activeTab === "active" ? "No active funds found." : "No archived mutual funds found."}
                 </p>
+                <p className="text-xs mt-1 opacity-60">Try adjusting your search</p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Buy/Sell Modal */}
+        {/* RIGHT PANEL: Details */}
+        <div className="flex-1 flex flex-col min-h-0 gap-4 lg:gap-6">
+          {detailLoading ? (
+            <div className="flex-1 flex items-center justify-center bg-[#111827]/80 rounded-2xl border border-slate-800/80">
+               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            </div>
+          ) : selectedFund ? (
+            <>
+              {/* HERO CARD */}
+              <div className={`shrink-0 backdrop-blur-md rounded-2xl p-5 lg:p-6 shadow-2xl relative overflow-hidden flex flex-col lg:flex-row lg:items-center justify-between gap-6 ${
+                isInactive
+                  ? 'bg-[#111827]/70 border border-amber-900/40'
+                  : 'bg-[#111827]/90 border border-slate-700/50'
+              }`}>
+                <div className="absolute -top-24 -right-24 w-64 h-64 bg-blue-500/10 blur-[80px] rounded-full pointer-events-none"></div>
+                <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-purple-500/10 blur-[80px] rounded-full pointer-events-none"></div>
+
+                <div className="relative z-10 flex items-center gap-5">
+                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-lg border shrink-0 ${
+                    isInactive
+                      ? 'bg-gradient-to-br from-slate-600 to-slate-700 border-white/5'
+                      : 'bg-gradient-to-br from-blue-600 to-indigo-600 border-white/10'
+                  }`}>
+                    {isInactive ? <Archive size={28} className="text-amber-400/80" /> : (selectedFund.meta.fund_house?.charAt(0) || 'F')}
+                  </div>
+                  <div>
+                    <h2 className="text-xl lg:text-2xl font-bold text-white mb-2 leading-tight pr-4">
+                      {selectedFund.meta.scheme_name}
+                    </h2>
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 border border-slate-700">
+                        {selectedFund.meta.fund_house}
+                      </span>
+                      {isInactive ? (
+                        <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                          <Archive size={9}/> Inactive Fund
+                        </span>
+                      ) : (
+                        getSchemeBadges(selectedFund.meta.scheme_name).map(b => (
+                          <span key={b} className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                            {b}
+                          </span>
+                        ))
+                      )}
+                      <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                        <Activity size={10}/> {selectedFund.meta.scheme_category || 'Mutual Fund'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="relative z-10 flex flex-wrap lg:flex-nowrap items-center gap-6 lg:gap-8 bg-[#0B1120]/50 p-4 rounded-xl border border-slate-800">
+                  <div>
+                    <p className="text-[10px] text-slate-500 uppercase font-semibold tracking-wider mb-1">
+                      {isInactive ? 'Last Known NAV' : 'Latest NAV'}
+                    </p>
+                    <div className="flex items-baseline gap-2">
+                      {isInactive ? (
+                        <span className="text-lg font-bold text-amber-400/80">Historical NAV Only</span>
+                      ) : (
+                        <>
+                          <span className="text-2xl font-bold text-white">{formatNavValue(latestNav)}</span>
+                          <span className={`text-xs font-medium flex items-center px-1.5 py-0.5 rounded ${isNavChangePositive ? 'text-emerald-400 bg-emerald-500/10' : 'text-red-400 bg-red-500/10'}`}>
+                            {isNavChangePositive ? <TrendingUp size={12} className="mr-0.5"/> : <TrendingDown size={12} className="mr-0.5"/>} {navChange}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      {isInactive ? `Last updated: ${formatNavDate(latestNavDate)}` : `As of ${formatNavDate(selectedFund?.data?.[0]?.date)}`}
+                    </p>
+                  </div>
+
+                  <div className="hidden lg:block w-px h-12 bg-slate-800"></div>
+
+                  <div className="flex flex-col gap-2 w-full lg:w-auto">
+                    {isInactive ? (
+                      <div className="group relative">
+                        <button
+                          disabled
+                          className="w-full lg:w-36 px-4 py-2 bg-slate-700/50 text-slate-500 rounded-lg text-sm font-semibold cursor-not-allowed flex justify-center items-center gap-2 border border-slate-700/50"
+                        >
+                          <Wallet size={16}/> Invest
+                        </button>
+                        <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-56 bg-slate-900 text-amber-300 text-[10px] font-medium px-3 py-2 rounded-lg border border-amber-500/20 shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 text-center">
+                          Investments unavailable for inactive mutual fund schemes.
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <button onClick={() => {setTxType('buy'); setShowTxModal(true)}} className="w-full lg:w-28 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold transition-all shadow-[0_0_20px_rgba(37,99,235,0.2)] hover:shadow-[0_0_25px_rgba(37,99,235,0.4)] flex justify-center items-center gap-2">
+                          <Wallet size={16}/> Invest
+                        </button>
+                        {hasHolding && (
+                          <button onClick={() => {setTxType('sell'); setShowTxModal(true)}} className="w-full lg:w-28 px-4 py-2 bg-transparent border border-slate-700 hover:border-red-500/50 hover:bg-red-500/10 text-slate-300 hover:text-red-400 rounded-lg text-sm font-semibold transition-all">
+                            Redeem
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+
+
+              {/* MIDDLE ROW */}
+              <div className="flex-1 flex flex-col lg:flex-row gap-4 lg:gap-6 min-h-0">
+                {/* Chart Section */}
+                <div className="flex-[2] bg-[#111827]/80 backdrop-blur-md border border-slate-700/50 rounded-2xl p-5 flex flex-col relative overflow-hidden shadow-xl min-h-[300px]">
+                  <h3 className="text-sm uppercase tracking-wider font-bold text-slate-300 mb-4 flex items-center gap-2">
+                    <Activity size={16} className={isInactive ? 'text-amber-400' : 'text-blue-500'} />
+                    {isInactive ? 'Historical Performance' : 'Performance History'}
+                    {isInactive && (
+                      <span className="ml-auto text-[9px] font-bold tracking-wider px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">ARCHIVED</span>
+                    )}
+                  </h3>
+                  <div className="flex-1 w-full min-h-0 mt-2">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartData} margin={{top: 10, right: 10, left: -20, bottom: 0}}>
+                        <defs>
+                          <linearGradient id="colorNav" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
+                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1e293b" />
+                        <XAxis
+                          dataKey="date"
+                          tick={{ fill: '#64748b', fontSize: 10 }}
+                          tickLine={false}
+                          axisLine={false}
+                          minTickGap={30}
+                        />
+                        <YAxis
+                          domain={['auto', 'auto']}
+                          tick={{ fill: '#64748b', fontSize: 10 }}
+                          tickLine={false}
+                          axisLine={false}
+                          tickFormatter={(val) => `₹${val}`}
+                        />
+                        <RechartsTooltip
+                          contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', border: '1px solid #1e293b', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.5)' }}
+                          itemStyle={{ color: '#e2e8f0', fontWeight: 'bold' }}
+                          labelStyle={{ color: '#94a3b8', fontSize: '12px', marginBottom: '4px' }}
+                          formatter={(value) => [`₹${value}`, 'NAV']}
+                        />
+                        <Area type="monotone" dataKey="nav" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorNav)" activeDot={{ r: 6, fill: '#3b82f6', stroke: '#0B1120', strokeWidth: 3 }} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Allocation Section */}
+                <div className="flex-1 bg-[#111827]/80 backdrop-blur-md border border-slate-700/50 rounded-2xl p-5 flex flex-col shadow-xl min-h-[300px]">
+                  <h3 className="text-sm uppercase tracking-wider font-bold text-slate-300 mb-4 flex items-center gap-2">
+                    <PieChartIcon size={16} className="text-emerald-400" />
+                    Asset Allocation
+                  </h3>
+                  <div className="flex-1 relative flex items-center justify-center min-h-[160px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={pieData}
+                          cx="50%" cy="50%"
+                          innerRadius={50} outerRadius={70}
+                          stroke="rgba(15,23,42,0.8)"
+                          strokeWidth={2}
+                          paddingAngle={2}
+                          dataKey="value"
+                        >
+                          {pieData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip 
+                          contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px', fontSize: '12px'}} 
+                          itemStyle={{color: '#f8fafc', fontWeight: 'bold'}} 
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <span className="text-xs text-slate-500 font-semibold uppercase">Total</span>
+                      <span className="text-xl font-bold text-white">100%</span>
+                    </div>
+                  </div>
+                  <div className="shrink-0 space-y-2 mt-4 bg-[#0B1120]/50 p-3 rounded-xl border border-slate-800">
+                    {pieData.map(d => (
+                      <div key={d.name} className="flex items-center justify-between text-[11px] font-semibold">
+                        <div className="flex items-center gap-2 text-slate-300">
+                          <div className="w-2.5 h-2.5 rounded-full" style={{backgroundColor: d.color}}></div>
+                          {d.name}
+                        </div>
+                        <div className="text-slate-100">{d.value}%</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* BOTTOM ROW */}
+              <div className="shrink-0 grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6 min-h-[160px]">
+                
+                {/* Fund Information */}
+                <div className="md:col-span-2 bg-[#111827]/80 backdrop-blur-md border border-slate-700/50 rounded-2xl p-5 shadow-xl flex flex-col justify-center">
+                  <h3 className="text-sm uppercase tracking-wider font-bold text-slate-300 mb-6 flex items-center gap-2">
+                    <Calendar size={16} className="text-blue-400" />
+                    Fund Information
+                  </h3>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 text-xs">
+                    <div><div className="text-slate-500 font-semibold uppercase tracking-wide mb-1">Scheme Code</div><div className="text-slate-200 font-bold text-sm">{selectedFund.meta.scheme_code}</div></div>
+                    <div><div className="text-slate-500 font-semibold uppercase tracking-wide mb-1">Category</div><div className="text-slate-200 font-bold text-sm truncate" title={selectedFund.meta.scheme_category}>{selectedFund.meta.scheme_category}</div></div>
+                    <div><div className="text-slate-500 font-semibold uppercase tracking-wide mb-1">Type</div><div className="text-slate-200 font-bold text-sm">{selectedFund.meta.scheme_type || 'Open Ended'}</div></div>
+                    <div><div className="text-slate-500 font-semibold uppercase tracking-wide mb-1">Fund House</div><div className="text-slate-200 font-bold text-sm truncate" title={selectedFund.meta.fund_house}>{selectedFund.meta.fund_house}</div></div>
+                  </div>
+                </div>
+
+                {/* AI Insight */}
+                <div className="md:col-span-1 bg-gradient-to-br from-[#1e1b4b] to-[#111827] border border-purple-500/20 rounded-2xl p-5 shadow-[0_0_20px_rgba(139,92,246,0.1)] relative overflow-hidden flex flex-col">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/20 blur-[50px] pointer-events-none rounded-full"></div>
+                  <h3 className="text-sm uppercase tracking-wider font-bold text-purple-300 mb-3 flex items-center gap-2 relative z-10">
+                    <Sparkles size={16} className="text-purple-400" />
+                    AI Insight
+                  </h3>
+                  <p className="text-[11px] text-purple-100/70 leading-relaxed relative z-10 flex-1">
+                    This <span className="text-purple-200 font-semibold">{selectedFund.meta.scheme_category}</span> fund exhibits characteristic volatility but offers strong potential for long-term wealth creation. It maintains a well-balanced portfolio, making it ideal for investors with a 5+ year horizon seeking alpha generation against benchmarks.
+                  </p>
+                </div>
+
+              </div>
+            </>
+          ) : null}
+
+        </div>
+      </div>
+
+      {/* MODALS */}
+      <AnimatePresence>
         {showTxModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden relative">
+          <motion.div 
+            initial={{opacity: 0}} animate={{opacity: 1}} exit={{opacity: 0}}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B1120]/80 backdrop-blur-md"
+          >
+            <motion.div 
+              initial={{scale: 0.95, y: 20}} animate={{scale: 1, y: 0}} exit={{scale: 0.95, y: 20}}
+              className="bg-[#111827] border border-slate-700/80 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden relative"
+            >
               <div className="p-6">
                 <button
                   onClick={() => setShowTxModal(false)}
-                  className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                  className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
                 >
-                  <X size={20} />
+                  <X size={16} />
                 </button>
 
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-1 capitalize">
-                  {txType === 'buy' ? (isSipSelected ? 'Start SIP' : 'Buy Lumpsum') : 'Sell Mutual Fund'}
+                <h3 className="text-2xl font-bold text-white mb-1">
+                  {txType === 'buy' ? (isSipSelected ? 'Start SIP' : 'Buy Lumpsum') : 'Redeem Mutual Fund'}
                 </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 line-clamp-1">
+                <p className="text-xs font-medium text-slate-400 mb-6 bg-slate-800/50 inline-block px-3 py-1.5 rounded-lg border border-slate-700/50">
                   {selectedFund?.meta?.scheme_name}
                 </p>
 
                 {txType === 'buy' && (
-                  <div className="flex bg-gray-100 dark:bg-gray-700/50 p-1 rounded-lg mb-6">
+                  <div className="flex bg-[#0B1120] p-1.5 rounded-xl mb-6 border border-slate-800">
                     <button
                       type="button"
                       onClick={() => setIsSipSelected(false)}
-                      className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${!isSipSelected ? 'bg-white dark:bg-gray-600 shadow text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                      className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all uppercase tracking-wider ${!isSipSelected ? 'bg-blue-600 shadow-md text-white' : 'text-slate-500 hover:text-slate-300'}`}
                     >
                       Lumpsum
                     </button>
                     <button
                       type="button"
                       onClick={() => setIsSipSelected(true)}
-                      className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${isSipSelected ? 'bg-white dark:bg-gray-600 shadow text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                      className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all uppercase tracking-wider ${isSipSelected ? 'bg-blue-600 shadow-md text-white' : 'text-slate-500 hover:text-slate-300'}`}
                     >
                       SIP
                     </button>
@@ -608,45 +824,63 @@ export default function MutualFunds() {
                 )}
 
                 {txMessage && (
-                  <div className={`mb-6 p-4 rounded-lg flex items-start gap-3 ${txMessage.type === 'success'
-                    ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                    : 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                  <div className={`mb-6 p-4 rounded-xl flex items-start gap-3 text-sm font-medium border ${txMessage.type === 'success'
+                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                    : 'bg-red-500/10 text-red-400 border-red-500/20'
                     }`}>
                     {txMessage.type === 'success' ? <CheckCircle2 className="shrink-0 mt-0.5" size={18} /> : <ShieldAlert className="shrink-0 mt-0.5" size={18} />}
-                    <span className="text-sm font-medium">{txMessage.text}</span>
+                    <span>{txMessage.text}</span>
                   </div>
                 )}
 
                 <form onSubmit={handleTransaction}>
                   <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
                       Amount (₹)
                     </label>
-                    <input
-                      type="number"
-                      min="100"
-                      step="100"
-                      required
-                      value={txAmount}
-                      onChange={(e) => setTxAmount(e.target.value)}
-                      placeholder="Enter amount (e.g. 5000)"
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 dark:text-white text-lg font-medium"
-                    />
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 flex justify-between">
-                      <span>Min: ₹100</span>
-                      <span>Current NAV: {formatNavValue(latestNav)}</span>
-                    </p>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">₹</span>
+                      <input
+                        type="number"
+                        min="100"
+                        step="100"
+                        required
+                        value={txAmount}
+                        onChange={(e) => setTxAmount(e.target.value)}
+                        placeholder="5,000"
+                        className="w-full pl-8 pr-4 py-3.5 bg-[#0B1120] border border-slate-700/80 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-white text-lg font-bold placeholder:text-slate-600 transition-all"
+                      />
+                    </div>
+                    <div className="flex justify-between mt-2 px-1">
+                      <p className="text-[10px] text-slate-500 font-medium">MIN: ₹100</p>
+                      <p className="text-[10px] text-blue-400 font-medium bg-blue-500/10 px-2 py-0.5 rounded">NAV: {formatNavValue(latestNav)}</p>
+                    </div>
+
+                    {/* Sell All shortcut — only visible in sell mode with an existing holding */}
+                    {txType === 'sell' && currentHolding && latestNav > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const allUnitsValue = currentHolding.units * latestNav;
+                          setTxAmount(String(Math.floor(allUnitsValue)));
+                        }}
+                        className="mt-3 w-full py-2.5 rounded-xl border border-red-500/30 bg-red-500/5 hover:bg-red-500/10 text-red-400 text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                        Sell All &nbsp;<span className="opacity-60 font-normal normal-case tracking-normal">{currentHolding.units.toFixed(4)} units · ₹{Math.floor(currentHolding.units * latestNav).toLocaleString('en-IN')}</span>
+                      </button>
+                    )}
                   </div>
 
                   {txType === 'buy' && isSipSelected && (
-                    <div className="mb-6">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Duration (Months)
+                    <div className="mb-8">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                        Duration
                       </label>
                       <select
                         value={txDuration}
                         onChange={(e) => setTxDuration(e.target.value)}
-                        className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-gray-900 dark:text-white text-lg font-medium"
+                        className="w-full px-4 py-3.5 bg-[#0B1120] border border-slate-700/80 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white text-sm font-bold transition-all appearance-none"
                       >
                         <option value="6">6 Months</option>
                         <option value="12">1 Year</option>
@@ -660,32 +894,39 @@ export default function MutualFunds() {
                   <button
                     type="submit"
                     disabled={txLoading}
-                    className={`w-full py-3.5 rounded-xl text-white font-bold text-lg transition-colors flex justify-center items-center gap-2 ${txLoading ? 'opacity-70 cursor-not-allowed' : ''
-                      } ${txType === 'buy' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-red-600 hover:bg-red-700'
+                    className={`w-full py-4 rounded-xl text-white font-bold text-sm tracking-wide transition-all shadow-lg flex justify-center items-center gap-2 ${txLoading ? 'opacity-70 cursor-not-allowed' : ''
+                      } ${txType === 'buy' ? 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 shadow-blue-500/25' : 'bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 shadow-red-500/25'
                       }`}
                   >
-                    {txLoading ? 'Processing...' : `Confirm ${txType === 'buy' && isSipSelected ? 'SIP' : txType.toUpperCase()}`}
+                    {txLoading ? (
+                      <span className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        PROCESSING...
+                      </span>
+                    ) : (
+                      `CONFIRM ${txType === 'buy' && isSipSelected ? 'SIP' : txType.toUpperCase()}`
+                    )}
                   </button>
                 </form>
               </div>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         )}
 
-        {/* Success Confirmation Modal */}
         {showSuccessModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B1120]/90 backdrop-blur-lg">
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
+              initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center"
+              className="bg-[#111827] border border-slate-700 rounded-3xl shadow-[0_0_50px_rgba(16,185,129,0.1)] p-8 max-w-sm w-full text-center relative overflow-hidden"
             >
-              <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <CheckCircle2 size={32} />
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-emerald-600"></div>
+              <div className="w-20 h-20 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
+                <CheckCircle2 size={40} />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Order Successful!</h3>
-              <p className="text-gray-500 dark:text-gray-400 mb-6">
-                Your {isSipSelected ? 'SIP' : 'Lumpsum'} investment order for {selectedFund?.meta?.scheme_name} has been processed successfully.
+              <h3 className="text-2xl font-bold text-white mb-2">Order Successful!</h3>
+              <p className="text-sm text-slate-400 mb-8 leading-relaxed">
+                Your <span className="text-white font-semibold">{isSipSelected ? 'SIP' : 'Lumpsum'}</span> investment for <span className="text-white font-semibold">{selectedFund?.meta?.scheme_name}</span> has been processed.
               </p>
               <div className="space-y-3">
                 <button
@@ -693,9 +934,9 @@ export default function MutualFunds() {
                     setShowSuccessModal(false);
                     navigate('/dashboard-area/portfolio');
                   }}
-                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors"
+                  className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-sm tracking-wide transition-colors shadow-lg shadow-blue-500/20"
                 >
-                  Go to Portfolio
+                  GO TO PORTFOLIO
                 </button>
                 {isSipSelected && (
                   <button
@@ -703,14 +944,14 @@ export default function MutualFunds() {
                       setShowSuccessModal(false);
                       navigate('/dashboard-area/sips');
                     }}
-                    className="w-full py-3 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 rounded-xl font-semibold transition-colors"
+                    className="w-full py-3.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-sm tracking-wide transition-colors"
                   >
-                    Manage SIPs
+                    MANAGE SIPS
                   </button>
                 )}
                 <button
                   onClick={() => setShowSuccessModal(false)}
-                  className="w-full py-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 font-medium transition-colors"
+                  className="w-full py-3.5 text-slate-500 hover:text-slate-300 text-xs font-bold tracking-wider transition-colors uppercase"
                 >
                   Continue Browsing
                 </button>
@@ -718,72 +959,7 @@ export default function MutualFunds() {
             </motion.div>
           </div>
         )}
-
-        {/* AI Recommendations Modal */}
-        {showAIPopup && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-indigo-100 dark:border-indigo-900/30 w-full max-w-2xl overflow-hidden relative"
-            >
-              <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white relative">
-                <button
-                  onClick={() => setShowAIPopup(false)}
-                  className="absolute top-4 right-4 text-white/70 hover:text-white"
-                >
-                  <X size={24} />
-                </button>
-                <div className="flex items-center gap-3 mb-2">
-                  <Sparkles size={28} className="text-yellow-300" />
-                  <h2 className="text-2xl font-bold">Today's Top Picks</h2>
-                </div>
-                <p className="text-indigo-100">
-                  AI-curated mutual fund recommendations for {new Intl.DateTimeFormat('en-IN', { dateStyle: 'full' }).format(new Date())}
-                </p>
-              </div>
-
-              <div className="p-6 space-y-4">
-                {[
-                  { name: "Parag Parikh Flexi Cap", category: "Flexi Cap", rationale: "Consistent alpha generation across market cycles with downside protection.", cagr: "18.4%" },
-                  { name: "Nippon India Small Cap", category: "Small Cap", rationale: "Excellent stock picking in the small-cap space with high growth potential.", cagr: "24.1%" },
-                  { name: "Quant Active", category: "Multi Cap", rationale: "Dynamic asset allocation strategy capturing momentum effectively.", cagr: "21.8%" }
-                ].map((fund, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => {
-                      setQuery(fund.name);
-                      setShowAIPopup(false);
-                    }}
-                    className="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-xl border border-gray-100 dark:border-gray-700 flex flex-col md:flex-row md:items-center gap-4 hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-500 cursor-pointer transition-all"
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Star size={16} className="text-amber-500 fill-amber-500" />
-                        <h4 className="font-bold text-gray-900 dark:text-white text-lg">{fund.name}</h4>
-                      </div>
-                      <span className="inline-block text-xs font-semibold px-2.5 py-1 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 rounded-full mb-2">
-                        {fund.category}
-                      </span>
-                      <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-                        {fund.rationale}
-                      </p>
-                    </div>
-                    <div className="md:border-l md:border-gray-200 dark:md:border-gray-600 md:pl-6 text-left md:text-center shrink-0">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">3Y CAGR</p>
-                      <p className="text-2xl font-bold text-green-600 dark:text-green-400">{fund.cagr}</p>
-                    </div>
-                  </div>
-                ))}
-
-                <div className="mt-6 text-xs text-gray-500 dark:text-gray-400 text-center italic bg-yellow-50 dark:bg-yellow-900/10 p-3 rounded-lg border border-yellow-100 dark:border-yellow-900/20">
-                  Disclaimer: Mutual fund investments are subject to market risks. Read all scheme related documents carefully. These AI-generated suggestions do not constitute financial advice.
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </div>
+      </AnimatePresence>
     </div>
   );
 }

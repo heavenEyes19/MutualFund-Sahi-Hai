@@ -4,51 +4,74 @@ import {
   PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend
 } from 'recharts';
 import {
-  IndianRupee, TrendingUp, TrendingDown, AlertCircle, PlusCircle, MinusCircle, Wallet, Activity
+  TrendingUp, TrendingDown, PlusCircle, MinusCircle, Wallet, Activity, BarChart3
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+
+const getFundCategory = (schemeName) => {
+  if (!schemeName) return 'Equity';
+  const name = schemeName.toLowerCase();
+  if (name.includes('debt') || name.includes('liquid') || name.includes('bond') || name.includes('gilt') || name.includes('fixed')) return 'Debt';
+  if (name.includes('hybrid') || name.includes('balanced') || name.includes('dynamic') || name.includes('arbitrage')) return 'Hybrid';
+  return 'Equity';
+};
+
+const getCategoryBadgeStyles = (category) => {
+  switch (category) {
+    case 'Equity': return 'bg-[#0088FE]/10 text-[#0088FE] dark:bg-[#0088FE]/20';
+    case 'Debt': return 'bg-[#00C49F]/10 text-[#00C49F] dark:bg-[#00C49F]/20';
+    case 'Hybrid': return 'bg-[#FFBB28]/10 text-[#FFBB28] dark:bg-[#FFBB28]/20 text-[10px]';
+    default: return 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400';
+  }
+};
 
 const Portfolio = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetchPortfolio();
-  }, []);
-
   const fetchPortfolio = async () => {
     try {
       const res = await API.get('/portfolio');
       setData(res.data);
       setLoading(false);
-    } catch (err) {
+    } catch {
       setError('Failed to fetch portfolio data');
       setLoading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    setTimeout(() => fetchPortfolio(), 0);
+  }, []);
 
   const overview = data?.overview || {};
   const holdings = data?.holdings || [];
   const isPositiveReturn = (overview?.totalReturns || 0) >= 0;
 
-  // Mock data for charts
-  const assetAllocation = [
-    { name: 'Equity', value: 65 },
-    { name: 'Debt', value: 25 },
-    { name: 'Hybrid', value: 10 },
-  ];
+  // Dynamic data for charts
+  const assetAllocation = React.useMemo(() => {
+    if (!holdings || holdings.length === 0) return [];
+    const alloc = { Equity: 0, Debt: 0, Hybrid: 0 };
+    let total = 0;
+    holdings.forEach(h => {
+      const cat = getFundCategory(h.schemeName);
+      const val = h.currentValue || 0;
+      if (alloc[cat] !== undefined) alloc[cat] += val;
+      else alloc.Equity += val; // fallback
+      total += val;
+    });
+    if (total === 0) return [];
+    return [
+      { name: 'Equity', value: Number(((alloc.Equity / total) * 100).toFixed(2)) },
+      { name: 'Debt', value: Number(((alloc.Debt / total) * 100).toFixed(2)) },
+      { name: 'Hybrid', value: Number(((alloc.Hybrid / total) * 100).toFixed(2)) },
+    ].filter(a => a.value > 0);
+  }, [holdings]);
 
+  // Mock data for Growth chart (Backend does not track historical portfolio value yet)
   const growthData = [
     { name: 'Jan', invested: 10000, value: 10500 },
     { name: 'Feb', invested: 20000, value: 21500 },
@@ -57,6 +80,14 @@ const Portfolio = () => {
     { name: 'May', invested: 50000, value: 55000 },
     { name: 'Jun', invested: overview.totalInvested || 60000, value: overview.currentValue || 68000 },
   ];
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 md:p-8 bg-gray-50 dark:bg-gray-950 min-h-screen text-gray-900 dark:text-gray-100 font-sans">
@@ -85,27 +116,6 @@ const Portfolio = () => {
         </div>
       )}
 
-      {/* AI Insights */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-8 p-5 bg-gradient-to-r from-indigo-900 to-purple-900 rounded-2xl shadow-xl flex items-start space-x-4 border border-indigo-800 relative overflow-hidden"
-      >
-        <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-purple-500 rounded-full opacity-20 blur-xl"></div>
-        <div className="absolute bottom-0 left-0 -mb-4 -ml-4 w-24 h-24 bg-indigo-500 rounded-full opacity-20 blur-xl"></div>
-
-        <div className="bg-white/10 p-3 rounded-full backdrop-blur-sm z-10">
-          <AlertCircle className="text-indigo-300" size={24} />
-        </div>
-        <div className="z-10">
-          <h3 className="text-lg font-semibold text-white mb-1">AI Portfolio Insights 🔥</h3>
-          <ul className="text-indigo-200 space-y-1 text-sm">
-            <li>• Your portfolio is currently heavily weighted towards Equity. Consider diversifying into Debt funds to reduce risk.</li>
-            <li>• You have a great XIRR of 15.4% over the last year. Keep your SIPs running!</li>
-          </ul>
-        </div>
-      </motion.div>
-
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <Card title="Total Invested" value={overview.totalInvested} icon={<Wallet />} />
@@ -117,7 +127,7 @@ const Portfolio = () => {
           isPositive={isPositiveReturn}
           subtitle={`${overview.totalReturnsPercent?.toFixed(2)}%`}
         />
-        <Card title="Est. XIRR" value="15.4%" icon={<TrendingUp />} textOnly />
+        <Card title="Active Holdings" value={holdings.length} icon={<BarChart3 />} textOnly />
       </div>
 
       {/* Charts Section */}
@@ -192,9 +202,16 @@ const Portfolio = () => {
                   <td colSpan="6" className="p-8 text-center text-gray-500">No holdings found. Start investing!</td>
                 </tr>
               ) : (
-                holdings.map((fund, idx) => (
+                holdings.map((fund, idx) => {
+                  const category = getFundCategory(fund.schemeName);
+                  return (
                   <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                    <td className="p-4 font-medium text-gray-900 dark:text-gray-100">{fund.schemeName}</td>
+                    <td className="p-4">
+                      <div className="font-medium text-gray-900 dark:text-gray-100">{fund.schemeName}</div>
+                      <span className={`inline-block mt-1.5 px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider ${getCategoryBadgeStyles(category)}`}>
+                        {category}
+                      </span>
+                    </td>
                     <td className="p-4 text-gray-600 dark:text-gray-400">{fund.units.toFixed(2)}</td>
                     <td className="p-4 text-gray-600 dark:text-gray-400">₹{fund.avgNav.toFixed(2)}</td>
                     <td className="p-4 text-gray-600 dark:text-gray-400">₹{fund.currentNav?.toFixed(2) || '-'}</td>
@@ -206,7 +223,8 @@ const Portfolio = () => {
                       </span>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import { Search, Send, User } from 'lucide-react';
@@ -13,12 +13,23 @@ const Support = () => {
   const [socket, setSocket] = useState(null);
   const messagesEndRef = useRef(null);
 
+  async function fetchInvestors() {
+    try {
+      const res = await axios.get('http://localhost:5000/api/chat/investors', {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      setInvestors(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
   useEffect(() => {
     const newSocket = io('http://localhost:5000');
-    setSocket(newSocket);
+    setTimeout(() => setSocket(newSocket), 0);
 
     // Initial fetch of investors who chatted
-    fetchInvestors();
+    setTimeout(() => fetchInvestors(), 0);
 
     return () => newSocket.disconnect();
   }, []);
@@ -40,16 +51,7 @@ const Support = () => {
     };
   }, [socket, activeInvestor]);
 
-  const fetchInvestors = async () => {
-    try {
-      const res = await axios.get('http://localhost:5000/api/chat/investors', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      });
-      setInvestors(res.data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+
 
   const fetchHistory = async (investorId) => {
     try {

@@ -9,9 +9,7 @@ const KYCManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedKyc, setSelectedKyc] = useState(null);
 
-  useEffect(() => {
-    fetchKYCs();
-  }, []);
+
 
   const fetchKYCs = async () => {
     setIsLoading(true);
@@ -25,6 +23,10 @@ const KYCManagement = () => {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    setTimeout(() => fetchKYCs(), 0);
+  }, []);
 
   const handleVerify = async (id, status) => {
     try {

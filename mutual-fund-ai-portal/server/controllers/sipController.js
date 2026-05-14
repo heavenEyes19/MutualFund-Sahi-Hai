@@ -2,6 +2,23 @@ import SIP from "../models/SIP.js";
 import Transaction from "../models/Transaction.js";
 import Holding from "../models/Holding.js";
 
+const parsePositiveNav = (value) => {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+};
+
+const getLatestNav = async (schemeCode) => {
+  try {
+    const url = new URL(`/mf/${schemeCode}/latest`, process.env.MFAPI_BASE_URL);
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const data = await response.json();
+    return parsePositiveNav(data?.data?.[0]?.nav);
+  } catch {
+    return null;
+  }
+};
+
 export const getSIPs = async (req, res) => {
   try {
     const sips = await SIP.find({ user: req.user._id });
@@ -15,6 +32,13 @@ export const createSIP = async (req, res) => {
   const { schemeCode, schemeName, amount, startDate, durationMonths } = req.body;
   
   try {
+    const latestNav = await getLatestNav(schemeCode);
+    if (!latestNav) {
+      return res.status(400).json({
+        message: "Live NAV data is unavailable for this scheme. SIP cannot be created.",
+      });
+    }
+
     const sip = await SIP.create({
       user: req.user._id,
       schemeCode,
