@@ -15,6 +15,7 @@ import Portfolio from '../pages/investor/Portfolio';
 import SIPs from '../pages/investor/SIPs';
 import History from '../pages/investor/History';
 import MutualFunds from '../pages/MutualFunds';
+import MutualFundDetails from '../pages/MutualFundDetails';
 import KYCPage from '../pages/investor/KYCPage';
 import Profile from '../pages/Profile';
 
@@ -97,6 +98,14 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <MutualFunds />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'mutual-funds/:schemeCode',
+        element: (
+          <ProtectedRoute>
+            <MutualFundDetails />
           </ProtectedRoute>
         ),
       },

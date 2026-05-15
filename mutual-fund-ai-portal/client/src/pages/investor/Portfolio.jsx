@@ -9,6 +9,7 @@ import {
 import { motion } from 'framer-motion';
 import KycGuard from '../../components/layout/KycGuard';
 import { useKycStatus } from '../../hooks/useKycStatus';
+import { sellFund } from '../../services/portfolio';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
@@ -43,6 +44,33 @@ const Portfolio = () => {
     } catch {
       setError('Failed to fetch portfolio data');
       setLoading(false);
+    }
+  };
+
+  const [sellingFundId, setSellingFundId] = useState(null);
+
+  const handleSellAll = async (fund) => {
+    if (!fund.currentNav) {
+      alert("Cannot sell: Current NAV is unavailable.");
+      return;
+    }
+    if (!window.confirm(`Are you sure you want to sell all units of ${fund.schemeName}?`)) return;
+    
+    setSellingFundId(fund.schemeCode);
+    try {
+      await sellFund({
+        schemeCode: fund.schemeCode,
+        schemeName: fund.schemeName,
+        amount: fund.currentValue,
+        nav: fund.currentNav,
+        unitsToSell: fund.units,
+        currentNav: fund.currentNav
+      });
+      fetchPortfolio();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to sell fund.');
+    } finally {
+      setSellingFundId(null);
     }
   };
 
@@ -198,6 +226,7 @@ const Portfolio = () => {
                 <th className="p-4 font-medium">Current NAV</th>
                 <th className="p-4 font-medium">Current Value</th>
                 <th className="p-4 font-medium">Gain/Loss</th>
+                <th className="p-4 font-medium text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -225,6 +254,15 @@ const Portfolio = () => {
                         {fund.gainLossPercent >= 0 ? <TrendingUp size={12} className="mr-1" /> : <TrendingDown size={12} className="mr-1" />}
                         {Math.abs(fund.gainLossPercent).toFixed(2)}%
                       </span>
+                    </td>
+                    <td className="p-4 text-right">
+                      <button
+                        onClick={() => handleSellAll(fund)}
+                        disabled={sellingFundId === fund.schemeCode}
+                        className="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
+                      >
+                        {sellingFundId === fund.schemeCode ? 'Selling...' : 'Sell All'}
+                      </button>
                     </td>
                   </tr>
                   );

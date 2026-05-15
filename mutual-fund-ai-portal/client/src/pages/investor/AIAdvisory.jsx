@@ -85,10 +85,10 @@ const AIAdvisory = () => {
 
   return (
     <KycGuard kycStatus={kycStatus} kycRejectionReason={kycRejectionReason} loading={kycLoading}>
-    <div className="p-6 md:p-8 bg-[#0B1120] min-h-screen text-slate-200 font-sans">
+    <div className="p-4 md:p-6 bg-[#0B1120] h-[calc(100vh-64px)] flex flex-col text-slate-200 font-sans">
       
       {/* TOP SECTION: Header & Subtitle */}
-      <div className="mb-6">
+      <div className="mb-4">
         <h1 className="text-2xl font-bold text-white flex items-center tracking-wide">
           <Sparkles className="mr-3 text-blue-500 fill-blue-500/20" size={24} />
           AI Advisory
@@ -97,7 +97,7 @@ const AIAdvisory = () => {
       </div>
 
       {/* 4 Compact Insight Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         {/* Card 1 */}
         <div className="bg-[#111827] border border-slate-800/80 rounded-xl p-5 shadow-sm">
           <div className="flex items-center text-slate-400 text-xs font-medium mb-3">
@@ -204,11 +204,11 @@ const AIAdvisory = () => {
       </div>
 
       {/* MAIN LAYOUT */}
-      <div className="w-full">
+      <div className="w-full flex-1 min-h-0 flex">
         
         {/* Main AI Area */}
-        <div className="w-full">
-          <div className="bg-[#111827] border border-slate-800/80 rounded-2xl p-6 min-h-[550px] flex flex-col shadow-sm">
+        <div className="w-full h-full">
+          <div className="bg-[#111827] border border-slate-800/80 rounded-2xl p-6 h-full flex flex-col shadow-sm">
             <h2 className="text-lg font-bold text-white mb-1">How can I help you today?</h2>
             <p className="text-slate-400 text-sm mb-6">Ask anything about mutual funds, your portfolio, or investment strategies.</p>
 

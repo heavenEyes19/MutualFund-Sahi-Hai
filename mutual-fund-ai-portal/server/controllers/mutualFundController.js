@@ -26,6 +26,46 @@ const getNavAgeYears = (navDateStr) => {
   return (Date.now() - new Date(year, month - 1, day).getTime()) / (1000 * 60 * 60 * 24 * 365.25);
 };
 
+// ─── Return calculation helper ────────────────────────────────────────────────
+const calculateReturns = (navData) => {
+  if (!navData || navData.length < 2) return { return1y: null, return3y: null, return5y: null };
+  
+  const latest = navData[0];
+  const latestNav = parseFloat(latest.nav);
+  if (isNaN(latestNav)) return { return1y: null, return3y: null, return5y: null };
+
+  const [d, m, y] = latest.date.split("-").map(Number);
+
+  const getReturn = (years) => {
+    const targetDate = new Date(y - years, m - 1, d);
+    let closestNav = null;
+    let minDiff = Infinity;
+
+    for (const entry of navData) {
+      const [ed, em, ey] = entry.date.split("-").map(Number);
+      const eDate = new Date(ey, em - 1, ed);
+      const diff = Math.abs(targetDate - eDate);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closestNav = parseFloat(entry.nav);
+      }
+      // If we are significantly past the target date, stop searching
+      if (eDate < targetDate && diff > 15 * 24 * 60 * 60 * 1000) break;
+    }
+
+    if (minDiff <= 15 * 24 * 60 * 60 * 1000 && closestNav) {
+      return (((latestNav - closestNav) / closestNav) * 100).toFixed(2);
+    }
+    return null;
+  };
+
+  return {
+    return1y: getReturn(1),
+    return3y: getReturn(3),
+    return5y: getReturn(5)
+  };
+};
+
 // ─── HTTP helpers ─────────────────────────────────────────────────────────────
 const buildMfApiUrl = (path, query = {}) => {
   const url = new URL(path, process.env.MFAPI_BASE_URL);
@@ -82,23 +122,32 @@ const sendMfApiError = (res, error, message) =>
  * Uses cache.js so results persist for 6 hours.
  */
 const classifyScheme = async (scheme) => {
-  const cacheKey = `classify:${scheme.schemeCode}`;
+  const cacheKey = `classify:full:${scheme.schemeCode}`;
   const hit = cacheGet(cacheKey);
   if (hit !== null) return hit;
 
   try {
-    const latest  = await cachedFetch(
-      `latest:${scheme.schemeCode}`,
-      `/mf/${scheme.schemeCode}/latest`,
+    const details = await cachedFetch(
+      `details:full:${scheme.schemeCode}`,
+      `/mf/${scheme.schemeCode}`,
       {},
-      TTL.NAV_LATEST
+      TTL.FUND_DETAILS
     );
-    const navDate  = latest?.data?.[0]?.date ?? null;
-    const result   = { ...scheme, navDate, isActive: getNavAgeYears(navDate) <= INACTIVE_THRESHOLD_YEARS };
+
+    const navData = details?.data || [];
+    const navDate = navData[0]?.date ?? null;
+    const returns = calculateReturns(navData);
+
+    const result = { 
+      ...scheme, 
+      navDate, 
+      isActive: getNavAgeYears(navDate) <= INACTIVE_THRESHOLD_YEARS,
+      ...returns
+    };
     cacheSet(cacheKey, result, TTL.CLASSIFY);
     return result;
   } catch {
-    const result = { ...scheme, navDate: null, isActive: true };
+    const result = { ...scheme, navDate: null, isActive: true, return1y: null, return3y: null, return5y: null };
     cacheSet(cacheKey, result, TTL.CLASSIFY_ERR); // retry soon on error
     return result;
   }
