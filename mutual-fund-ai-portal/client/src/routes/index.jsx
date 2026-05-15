@@ -15,6 +15,8 @@ import Portfolio from '../pages/investor/Portfolio';
 import SIPs from '../pages/investor/SIPs';
 import History from '../pages/investor/History';
 import MutualFunds from '../pages/MutualFunds';
+import KYCPage from '../pages/investor/KYCPage';
+import Profile from '../pages/Profile';
 
 
 // Page imports - Admin
@@ -95,6 +97,22 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <MutualFunds />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'kyc',
+        element: (
+          <ProtectedRoute>
+            <KYCPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'profile',
+        element: (
+          <ProtectedRoute>
+            <Profile />
           </ProtectedRoute>
         ),
       },

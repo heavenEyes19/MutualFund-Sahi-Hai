@@ -7,6 +7,8 @@ import {
   TrendingUp, TrendingDown, PlusCircle, MinusCircle, Wallet, Activity, BarChart3
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import KycGuard from '../../components/layout/KycGuard';
+import { useKycStatus } from '../../hooks/useKycStatus';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
@@ -31,6 +33,7 @@ const Portfolio = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const { kycStatus, kycRejectionReason, loading: kycLoading } = useKycStatus();
 
   const fetchPortfolio = async () => {
     try {
@@ -90,6 +93,7 @@ const Portfolio = () => {
   }
 
   return (
+    <KycGuard kycStatus={kycStatus} kycRejectionReason={kycRejectionReason} loading={kycLoading}>
     <div className="p-6 md:p-8 bg-gray-50 dark:bg-gray-950 min-h-screen text-gray-900 dark:text-gray-100 font-sans">
       <div className="flex justify-between items-center mb-8">
         <div>
@@ -231,6 +235,7 @@ const Portfolio = () => {
         </div>
       </div>
     </div>
+    </KycGuard>
   );
 };
 

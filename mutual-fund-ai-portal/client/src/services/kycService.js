@@ -25,8 +25,8 @@ const kycService = {
   },
 
   // Admin: Verify KYC
-  verifyKYC: async (id, status) => {
-    const response = await api.put(`/kyc/verify/${id}`, { status });
+  verifyKYC: async (id, status, rejectionReason = "") => {
+    const response = await api.put(`/kyc/verify/${id}`, { status, rejectionReason });
     return response.data;
   },
 };

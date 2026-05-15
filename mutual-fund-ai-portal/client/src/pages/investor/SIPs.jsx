@@ -5,11 +5,14 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import KycGuard from '../../components/layout/KycGuard';
+import { useKycStatus } from '../../hooks/useKycStatus';
 
 const SIPs = () => {
   const [sips, setSips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const { kycStatus, kycRejectionReason, loading: kycLoading } = useKycStatus();
 
   // Calculator State
   const [calcAmount, setCalcAmount] = useState(100);
@@ -86,6 +89,7 @@ const SIPs = () => {
   const finalEarnings = finalValue - finalInvested;
 
   return (
+    <KycGuard kycStatus={kycStatus} kycRejectionReason={kycRejectionReason} loading={kycLoading}>
     <div className="p-6 md:p-8 bg-gray-50 dark:bg-gray-950 min-h-screen text-gray-900 dark:text-gray-100 font-sans">
       <div className="flex justify-between items-center mb-8">
         <div>
@@ -349,6 +353,7 @@ const SIPs = () => {
         </div>
       </div>
     </div>
+    </KycGuard>
   );
 };
 

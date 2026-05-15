@@ -4,11 +4,14 @@ import {
 } from "lucide-react";
 import API from "../../services/api";
 import useAuthStore from "../../store/useAuthStore";
+import KycGuard from "../../components/layout/KycGuard";
+import { useKycStatus } from "../../hooks/useKycStatus";
 
 import MessageBubble from "@/components/ai/MessageBubble";
 
 const AIAdvisory = () => {
   const { user } = useAuthStore();
+  const { kycStatus, kycRejectionReason, loading: kycLoading } = useKycStatus();
   const [input, setInput] = useState("");
   const [isReviewing, setIsReviewing] = useState(false);
   const [reviewData, setReviewData] = useState(null);
@@ -81,6 +84,7 @@ const AIAdvisory = () => {
   };
 
   return (
+    <KycGuard kycStatus={kycStatus} kycRejectionReason={kycRejectionReason} loading={kycLoading}>
     <div className="p-6 md:p-8 bg-[#0B1120] min-h-screen text-slate-200 font-sans">
       
       {/* TOP SECTION: Header & Subtitle */}
@@ -292,6 +296,7 @@ const AIAdvisory = () => {
 
       </div>
     </div>
+    </KycGuard>
   );
 };
 

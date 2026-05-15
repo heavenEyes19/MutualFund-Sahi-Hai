@@ -92,7 +92,7 @@ export const getAllKYC = async (req, res) => {
 export const verifyKYC = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, rejectionReason } = req.body;
 
     if (!["Approved", "Rejected"].includes(status)) {
       return res.status(400).json({ message: "Invalid status" });
@@ -105,6 +105,7 @@ export const verifyKYC = async (req, res) => {
     }
 
     kyc.status = status;
+    kyc.rejectionReason = status === "Rejected" ? (rejectionReason || "No reason provided") : null;
     await kyc.save();
 
     res.status(200).json({ message: `KYC ${status} successfully`, kyc });

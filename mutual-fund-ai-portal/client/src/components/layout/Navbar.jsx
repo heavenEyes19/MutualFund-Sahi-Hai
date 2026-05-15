@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Menu, Moon, Sun, LogOut, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Menu, Moon, Sun, LogOut, User, FileCheck } from 'lucide-react';
 import useAuthStore from '../../store/useAuthStore';
 
 /**
@@ -8,13 +9,18 @@ import useAuthStore from '../../store/useAuthStore';
  */
 const Navbar = ({ onMenuToggle, isDarkMode, onDarkModeToggle }) => {
   const { user, logout } = useAuthStore();
+  const navigate = useNavigate();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
     setIsProfileOpen(false);
-    // You can add navigation to login page here
-    // navigate('/login');
+    navigate('/login');
+  };
+
+  const handleNavigate = (path) => {
+    setIsProfileOpen(false);
+    navigate(path);
   };
 
   return (
@@ -90,13 +96,21 @@ const Navbar = ({ onMenuToggle, isDarkMode, onDarkModeToggle }) => {
 
                 {/* Menu items */}
                 <div className="p-2 space-y-1">
-                  <a
-                    href="#profile"
-                    className="flex items-center gap-3 px-3 py-2.5 text-sm font-semibold text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                  <button
+                    onClick={() => handleNavigate('/dashboard-area/profile')}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-semibold text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
                   >
                     <User size={16} className="text-blue-400" />
                     My Profile
-                  </a>
+                  </button>
+
+                  <button
+                    onClick={() => handleNavigate('/dashboard-area/kyc')}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-semibold text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                  >
+                    <FileCheck size={16} className="text-emerald-400" />
+                    Complete KYC
+                  </button>
 
                   {/* Logout button */}
                   <button

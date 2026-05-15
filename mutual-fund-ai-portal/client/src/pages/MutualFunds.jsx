@@ -21,6 +21,7 @@ import {
   searchMutualFunds,
 } from "../services/mutualFunds";
 import { getPortfolio, sellFund, createSIP, createRazorpayOrder, verifyRazorpayPayment } from "../services/portfolio";
+import { useKycStatus } from "../hooks/useKycStatus";
 
 // Utility functions
 const parseNumber = (value) => {
@@ -102,8 +103,10 @@ export default function MutualFunds() {
   const [txLoading, setTxLoading] = useState(false);
   const [txMessage, setTxMessage] = useState(null); // { type: 'success'|'error', text: '' }
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showKycModal, setShowKycModal] = useState(false);
 
   const navigate = useNavigate();
+  const { kycStatus, loading: kycLoading } = useKycStatus();
 
   useEffect(() => {
     const q = searchParams.get("q");
@@ -632,11 +635,31 @@ export default function MutualFunds() {
                       </div>
                     ) : (
                       <>
-                        <button onClick={() => {setTxType('buy'); setShowTxModal(true)}} className="w-full lg:w-28 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold transition-all shadow-[0_0_20px_rgba(37,99,235,0.2)] hover:shadow-[0_0_25px_rgba(37,99,235,0.4)] flex justify-center items-center gap-2">
+                        <button
+                          onClick={() => {
+                            if (!kycLoading && kycStatus !== 'VERIFIED') {
+                              setShowKycModal(true);
+                            } else {
+                              setTxType('buy');
+                              setShowTxModal(true);
+                            }
+                          }}
+                          className="w-full lg:w-28 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-semibold transition-all shadow-[0_0_20px_rgba(37,99,235,0.2)] hover:shadow-[0_0_25px_rgba(37,99,235,0.4)] flex justify-center items-center gap-2"
+                        >
                           <Wallet size={16}/> Invest
                         </button>
                         {hasHolding && (
-                          <button onClick={() => {setTxType('sell'); setShowTxModal(true)}} className="w-full lg:w-28 px-4 py-2 bg-transparent border border-slate-700 hover:border-red-500/50 hover:bg-red-500/10 text-slate-300 hover:text-red-400 rounded-lg text-sm font-semibold transition-all">
+                          <button
+                            onClick={() => {
+                              if (!kycLoading && kycStatus !== 'VERIFIED') {
+                                setShowKycModal(true);
+                              } else {
+                                setTxType('sell');
+                                setShowTxModal(true);
+                              }
+                            }}
+                            className="w-full lg:w-28 px-4 py-2 bg-transparent border border-slate-700 hover:border-red-500/50 hover:bg-red-500/10 text-slate-300 hover:text-red-400 rounded-lg text-sm font-semibold transition-all"
+                          >
                             Redeem
                           </button>
                         )}
@@ -958,6 +981,69 @@ export default function MutualFunds() {
               </div>
             </motion.div>
           </div>
+        )}
+
+        {/* KYC Required Modal */}
+        {showKycModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B1120]/80 backdrop-blur-md"
+            onClick={() => setShowKycModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-[#111827] border border-slate-700/80 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden relative"
+            >
+              <div className="h-1 w-full bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500" />
+              <div className="p-7 text-center">
+                <button
+                  onClick={() => setShowKycModal(false)}
+                  className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+                >
+                  <X size={16} />
+                </button>
+
+                <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4 ring-1 ring-blue-500/30 shadow-[0_0_25px_rgba(59,130,246,0.15)]">
+                  <ShieldAlert size={30} className="text-blue-400" />
+                </div>
+
+                <h3 className="text-xl font-bold text-white mb-2">
+                  {kycStatus === 'PENDING_VERIFICATION' ? 'KYC Under Verification' : 'Complete Your KYC'}
+                </h3>
+
+                <p className="text-slate-400 text-sm leading-relaxed mb-6">
+                  {kycStatus === 'PENDING_VERIFICATION'
+                    ? 'Your KYC is currently under review. Investment features will be unlocked once your documents are approved.'
+                    : kycStatus === 'REJECTED'
+                    ? 'Your KYC was rejected. Please resubmit your documents to start investing.'
+                    : 'Complete your KYC to start investing. It only takes a few minutes.'}
+                </p>
+
+                <div className="space-y-3">
+                  {kycStatus !== 'PENDING_VERIFICATION' && (
+                    <button
+                      onClick={() => { setShowKycModal(false); navigate('/profile'); }}
+                      className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 text-sm"
+                    >
+                      {kycStatus === 'REJECTED' ? 'Resubmit KYC' : 'Complete KYC Now'}
+                      <CheckCircle2 size={16} />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setShowKycModal(false)}
+                    className="w-full py-2.5 text-slate-500 hover:text-slate-300 text-xs font-bold tracking-wider transition-colors uppercase"
+                  >
+                    Continue Browsing
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
