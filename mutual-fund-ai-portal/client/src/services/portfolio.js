@@ -20,6 +20,11 @@ export const getTransactions = async () => {
   return data;
 };
 
+export const getSIPs = async () => {
+  const { data } = await API.get('/sips');
+  return data;
+};
+
 export const createSIP = async (sipData) => {
   const { data } = await API.post('/sips', sipData);
   return data;
