@@ -3,6 +3,7 @@ import axios from 'axios';
 import { io } from 'socket.io-client';
 import { Send, Sparkles } from 'lucide-react';
 import useAuthStore from '../../store/useAuthStore';
+import { BACKEND_URL } from '../../services/api';
 
 const Support = () => {
   const { user } = useAuthStore();
@@ -12,7 +13,7 @@ const Support = () => {
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    const newSocket = io('http://localhost:5000');
+    const newSocket = io(BACKEND_URL);
     setTimeout(() => setSocket(newSocket), 0);
 
     return () => newSocket.disconnect();
@@ -22,7 +23,7 @@ const Support = () => {
     if (!user || (!user._id && !user.id)) return;
     const invId = user._id || user.id;
     try {
-      const res = await axios.get(`http://localhost:5000/api/chat/history/${invId}`, {
+      const res = await axios.get(`${BACKEND_URL}/api/chat/history/${invId}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       setMessages(res.data);
