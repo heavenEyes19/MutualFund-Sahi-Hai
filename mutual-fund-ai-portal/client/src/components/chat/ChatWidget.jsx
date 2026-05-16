@@ -187,7 +187,7 @@ const ChatWidget = () => {
     <>
       {/* ══ EXPANDED: Full centered modal with glass backdrop ══ */}
       {isExpanded && isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+        <div className="fixed inset-0 z-[999] flex items-center justify-center p-6">
           {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/20 dark:bg-black/40 backdrop-blur-sm"
@@ -195,7 +195,7 @@ const ChatWidget = () => {
           />
 
           {/* Modal card */}
-          <div className="relative w-full max-w-[780px] h-[82vh] max-h-[700px] flex flex-col rounded-[28px] overflow-hidden shadow-2xl border border-white/60 dark:border-white/10 bg-white/80 dark:bg-[#111]/85 backdrop-blur-xl">
+          <div className="relative w-full max-w-[1000px] h-[82vh] max-h-[700px] flex flex-col rounded-[28px] overflow-hidden shadow-2xl border border-white/60 dark:border-white/10 bg-white/80 dark:bg-[#111]/85 backdrop-blur-xl">
 
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 bg-white/60 dark:bg-[#1A1A1A]/70 backdrop-blur-md border-b border-white/50 dark:border-[#2A2A2A] shrink-0">
