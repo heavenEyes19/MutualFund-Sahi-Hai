@@ -36,8 +36,21 @@ const Support = () => {
   useEffect(() => {
     if (user && socket) {
       const invId = user._id || user.id;
-      socket.emit('joinChat', invId);
+      
+      const onConnect = () => {
+        socket.emit('joinChat', invId);
+      };
+
+      if (socket.connected) {
+        onConnect();
+      }
+      
+      socket.on('connect', onConnect);
       fetchHistory();
+
+      return () => {
+        socket.off('connect', onConnect);
+      };
     }
   }, [socket, user]);
 
@@ -48,10 +61,16 @@ const Support = () => {
       setMessages((prev) => [...prev, message]);
     };
 
+    const handleChatCleared = () => {
+      setMessages([]);
+    };
+
     socket.on('receiveMessage', handleReceiveMsg);
+    socket.on('chatCleared', handleChatCleared);
 
     return () => {
       socket.off('receiveMessage', handleReceiveMsg);
+      socket.off('chatCleared', handleChatCleared);
     };
   }, [socket]);
 

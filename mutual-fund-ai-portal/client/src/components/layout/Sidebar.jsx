@@ -37,7 +37,7 @@ const Sidebar = ({ isOpen, onClose }) => {
       { label: 'Platform Analytics', path: '/dashboard-area/analytics', icon: BarChart3 },
       { label: 'KYC Management', path: '/dashboard-area/kyc-management', icon: Lock },
       { label: 'Fund Master', path: '/dashboard-area/fund-master', icon: Database },
-      { label: 'Support Chats', path: '/dashboard-area/support', icon: Sparkles },
+      { label: 'Support Chats', path: '/dashboard-area/admin-support', icon: Sparkles },
       { label: 'Settings', path: '/dashboard-area/settings', icon: Settings },
     ],
   };
@@ -117,7 +117,7 @@ const Sidebar = ({ isOpen, onClose }) => {
               Support
             </p>
             <Link
-              to="/dashboard-area/support"
+              to={role === 'admin' ? "/dashboard-area/admin-support" : "/dashboard-area/support"}
               onClick={onClose}
               className="flex items-center gap-4 px-4 py-3.5 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-all duration-300 group border border-transparent"
             >

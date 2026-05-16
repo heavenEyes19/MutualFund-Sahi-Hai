@@ -150,7 +150,7 @@ const router = createBrowserRouter([
       {
         path: 'support',
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute requiredRole="investor">
             <InvestorSupport />
           </ProtectedRoute>
         ),
@@ -190,7 +190,7 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: 'support',
+        path: 'admin-support',
         element: (
           <ProtectedRoute requiredRole="admin">
             <AdminSupport />

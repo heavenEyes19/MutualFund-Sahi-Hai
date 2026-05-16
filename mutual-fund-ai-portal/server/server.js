@@ -30,8 +30,16 @@ const io = new Server(server, {
 });
 
 io.on("connection", (socket) => {
+  console.log("Socket connected:", socket.id);
+
   socket.on("joinChat", (investorId) => {
+    console.log("Socket", socket.id, "joined chat:", investorId);
     socket.join(String(investorId));
+  });
+
+  socket.on("joinAdmin", () => {
+    console.log("Socket", socket.id, "joined admin room");
+    socket.join("admin");
   });
 
   socket.on("leaveChat", (investorId) => {
@@ -39,26 +47,32 @@ io.on("connection", (socket) => {
   });
 
   socket.on("sendMessage", async (data) => {
+    console.log("Socket", socket.id, "sending message:", data);
     try {
       const { investorId, senderId, senderRole, text } = data;
       const newMessage = new Message({ investorId, senderId, senderRole, text });
       
-      // Emit instantly for real-time
-      socket.to(String(investorId)).emit("receiveMessage", newMessage);
-      
-      // Save to DB in background
+      // Save to DB first so subsequent queries see it
       await newMessage.save();
+
+      // Emit to investor room AND admin room
+      socket.to(String(investorId)).to("admin").emit("receiveMessage", newMessage);
+      console.log("Message emitted successfully to", investorId, "and admin");
     } catch (err) {
       // Only log actual errors
       console.error("Error saving message", err);
     }
   });
 
+  socket.on("clearChat", (investorId) => {
+    socket.to(String(investorId)).to("admin").emit("chatCleared", investorId);
+  });
+
   socket.on("disconnect", () => {
-    // Clean up if needed
+    console.log("Socket disconnected:", socket.id);
   });
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
 });

@@ -56,3 +56,26 @@ export const getChatInvestors = async (req, res) => {
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
+
+// Delete chat history for an investor
+export const deleteChatHistory = async (req, res) => {
+  try {
+    let investorId;
+    if (req.user.role === "admin") {
+      investorId = req.params.investorId;
+    } else {
+      investorId = req.user._id;
+    }
+
+    if (!investorId) {
+      return res.status(400).json({ message: "Investor ID is required" });
+    }
+
+    const searchId = String(investorId);
+
+    await Message.deleteMany({ investorId: searchId });
+    res.status(200).json({ message: "Chat history deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};

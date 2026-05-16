@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
-import { Search, Send, User, MessageSquare, ShieldCheck, Mail, Activity, Sparkles } from 'lucide-react';
+import { Search, Send, User, MessageSquare, ShieldCheck, Mail, Activity, Sparkles, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import useAuthStore from '../../store/useAuthStore';
 import { BACKEND_URL } from '../../services/api';
@@ -29,9 +29,20 @@ const Support = () => {
 
   useEffect(() => {
     const newSocket = io(BACKEND_URL);
+    
+    const onConnect = () => {
+      newSocket.emit('joinAdmin');
+    };
+    
+    newSocket.on('connect', onConnect);
+    
     setTimeout(() => setSocket(newSocket), 0);
     setTimeout(() => fetchInvestors(), 0);
-    return () => newSocket.disconnect();
+    
+    return () => {
+      newSocket.off('connect', onConnect);
+      newSocket.disconnect();
+    };
   }, []);
 
   useEffect(() => {
@@ -45,7 +56,19 @@ const Support = () => {
     };
 
     socket.on('receiveMessage', handleReceiveMsg);
-    return () => socket.off('receiveMessage', handleReceiveMsg);
+    
+    const handleChatCleared = (clearedInvestorId) => {
+      if (activeInvestor && (activeInvestor._id === clearedInvestorId || activeInvestor.id === clearedInvestorId)) {
+        setMessages([]);
+      }
+      fetchInvestors();
+    };
+    socket.on('chatCleared', handleChatCleared);
+    
+    return () => {
+      socket.off('receiveMessage', handleReceiveMsg);
+      socket.off('chatCleared', handleChatCleared);
+    };
   }, [socket, activeInvestor]);
 
   const fetchHistory = async (investorId) => {
@@ -94,6 +117,27 @@ const Support = () => {
     setMessages((prev) => [...prev, messageData]);
     socket.emit('sendMessage', messageData);
     setInputText('');
+    fetchInvestors(); // Update sidebar immediately after sending
+  };
+
+  const handleDeleteChat = async () => {
+    if (!activeInvestor || !socket) return;
+    const invId = activeInvestor._id || activeInvestor.id;
+    
+    if (!window.confirm("Are you sure you want to completely erase this transmission history?")) return;
+
+    try {
+      await axios.delete(`${BACKEND_URL}/api/chat/history/${invId}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+      });
+      
+      setMessages([]);
+      socket.emit('clearChat', invId);
+      fetchInvestors();
+    } catch (err) {
+      console.error("Error deleting chat:", err);
+      alert("Failed to delete chat history.");
+    }
   };
 
   const filteredInvestors = investors.filter(inv => 
@@ -185,6 +229,13 @@ const Support = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                     <button 
+                        onClick={handleDeleteChat}
+                        title="Erase Chat History"
+                        className="p-3 text-slate-400 hover:text-rose-500 transition-colors rounded-xl hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                     >
+                        <Trash2 size={20} />
+                     </button>
                      <button className="p-3 text-slate-400 hover:text-indigo-600 transition-colors rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-500/10"><ShieldCheck size={20} /></button>
                   </div>
                 </header>

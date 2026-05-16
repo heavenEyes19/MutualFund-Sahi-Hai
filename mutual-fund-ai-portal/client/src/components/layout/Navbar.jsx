@@ -66,7 +66,7 @@ const Navbar = ({ isDarkMode, onDarkModeToggle }) => {
         { name: 'KYC Approvals', path: '/dashboard-area/kyc-management' },
         { name: 'Fund Master', path: '/dashboard-area/fund-master' },
         { name: 'Settings', path: '/dashboard-area/settings' },
-        { name: 'Support', path: '/dashboard-area/support' },
+        { name: 'Support', path: '/dashboard-area/admin-support' },
       ]
     : [
         { name: 'Explore', path: '/dashboard-area/explore' },
