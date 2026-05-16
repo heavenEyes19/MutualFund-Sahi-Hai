@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import API from '../../services/api';
 import {
   PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend
@@ -33,6 +34,7 @@ const getCategoryBadgeStyles = (category) => {
 };
 
 const Portfolio = () => {
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -145,10 +147,16 @@ const Portfolio = () => {
             <p className="text-slate-500 dark:text-slate-400 font-medium">Real-time performance tracking and asset distribution.</p>
           </div>
           <div className="flex gap-3 w-full sm:w-auto">
-            <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 bg-indigo-600 text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-indigo-500/20 hover:-translate-y-1 active:translate-y-0 transition-all">
+            <button 
+              onClick={() => navigate('/dashboard-area/mutual-funds')}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 bg-indigo-600 text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-indigo-500/20 hover:-translate-y-1 active:translate-y-0 transition-all"
+            >
               <PlusCircle size={18} /> Invest
             </button>
-            <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+            <button 
+              onClick={() => document.getElementById('current-holdings')?.scrollIntoView({ behavior: 'smooth' })}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+            >
               <MinusCircle size={18} /> Sell
             </button>
           </div>
@@ -265,8 +273,8 @@ const Portfolio = () => {
           </div>
         </div>
 
-        {/* Holdings Table */}
-        <div className="ui-card overflow-hidden dark:bg-slate-900/40">
+        {/* Current Holdings Table */}
+        <div id="current-holdings" className="ui-card overflow-hidden dark:bg-slate-900/40">
           <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
             <h3 className="text-[14px] font-black text-slate-900 dark:text-white uppercase tracking-wider">Current Holdings</h3>
             <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400">

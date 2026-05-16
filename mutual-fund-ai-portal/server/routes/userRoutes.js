@@ -79,6 +79,27 @@ router.post("/request-mpin-otp", protect, async (req, res) => {
   }
 });
 
+// Verify OTP intermediate step (just checks correctness without clearing)
+router.post("/verify-mpin-otp", protect, async (req, res) => {
+  const { otp } = req.body;
+  if (!otp) return res.status(400).json({ msg: "OTP is required" });
+
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user.otp || !user.otpExpires || user.otpExpires < new Date()) {
+      return res.status(400).json({ msg: "OTP expired or not requested" });
+    }
+
+    const isMatch = await bcrypt.compare(otp.toString(), user.otp);
+    if (!isMatch) return res.status(400).json({ msg: "Incorrect OTP" });
+
+    res.json({ msg: "OTP verified successfully" });
+  } catch (err) {
+    res.status(500).json({ msg: "Error verifying OTP" });
+  }
+});
+
+
 // Verify OTP and set new MPIN
 router.post("/set-mpin-via-otp", protect, async (req, res) => {
   const { otp, newMpin, confirmMpin } = req.body;

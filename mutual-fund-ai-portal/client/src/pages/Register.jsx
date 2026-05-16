@@ -7,7 +7,6 @@ import { motion } from "framer-motion";
 
 export default function Register() {
   const [isDarkMode, toggleDarkMode] = useDarkMode();
-  const [role, setRole] = useState("investor"); // Default role
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -19,13 +18,13 @@ export default function Register() {
     setError("");
 
     try {
-      const payload = { ...form, role };
+      const payload = { ...form }; // Role is now removed; backend defaults to investor
       await API.post("/auth/register", payload);
       navigate("/login", { state: { message: "Registration successful. Please log in." } });
     } catch (err) {
       console.error(err);
       if (err.message === "Network Error" || !err.response) {
-        alert(`[Demo Mode] Registration successful for ${role}! Redirecting to login...`);
+        alert(`[Demo Mode] Registration successful! Redirecting to login...`);
         navigate("/login");
       } else {
         setError(err.response?.data?.msg || err.response?.data?.message || "An error occurred during registration.");
@@ -34,11 +33,6 @@ export default function Register() {
       setIsLoading(false);
     }
   };
-
-  const roles = [
-    { id: "investor", label: "Investor", icon: User, desc: "Personal wealth" },
-    { id: "admin", label: "Admin", icon: Shield, desc: "System control" },
-  ];
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-white dark:bg-slate-950 transition-colors duration-300 font-inter">
@@ -169,36 +163,6 @@ export default function Register() {
           )}
 
           <form className="space-y-6" onSubmit={handleSubmit}>
-            {/* Role Selection */}
-            <div className="space-y-3">
-              <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] ml-1">Joining as...</label>
-              <div className="grid grid-cols-2 gap-4">
-                {roles.map((r) => {
-                  const Icon = r.icon;
-                  const isSelected = role === r.id;
-                  return (
-                    <motion.div
-                      whileTap={{ scale: 0.98 }}
-                      key={r.id}
-                      onClick={() => setRole(r.id)}
-                      className={`cursor-pointer border-2 rounded-2xl p-4 flex flex-col items-center gap-3 transition-all ${
-                        isSelected
-                          ? "border-indigo-500 bg-indigo-50/50 dark:bg-indigo-500/10"
-                          : "border-slate-100 dark:border-slate-900 hover:border-slate-200 dark:hover:border-slate-800"
-                      }`}
-                    >
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isSelected ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-slate-50 dark:bg-slate-900 text-slate-400'}`}>
-                        <Icon size={20} />
-                      </div>
-                      <div className="text-center">
-                        <p className={`text-sm font-black uppercase tracking-tight ${isSelected ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400'}`}>{r.label}</p>
-                        <p className="text-[9px] font-bold text-slate-400 mt-0.5 leading-tight uppercase tracking-tighter">{r.desc}</p>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </div>
 
             <div className="space-y-1.5">
               <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] ml-1">Full Name</label>
@@ -257,7 +221,7 @@ export default function Register() {
                 </>
               ) : (
                 <>
-                  Register as {role}
+                  Create Account
                   <ArrowRight size={18} />
                 </>
               )}

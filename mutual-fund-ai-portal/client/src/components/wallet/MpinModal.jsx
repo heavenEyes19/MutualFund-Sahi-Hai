@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShieldCheck, ShieldOff, RefreshCw, X, Eye, EyeOff, Mail } from 'lucide-react';
 import API from '../../services/api';
@@ -91,7 +92,7 @@ export default function MpinModal({ isOpen, onClose, onVerified, title, descript
   const btnPrimary = "w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl disabled:opacity-50 transition-all hover:-translate-y-0.5 active:scale-95";
   const btnGhost = "w-full text-center text-xs text-indigo-500 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors flex items-center justify-center gap-1 font-semibold py-1";
 
-  return (
+  const modalContent = (
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
@@ -254,4 +255,7 @@ export default function MpinModal({ isOpen, onClose, onVerified, title, descript
       )}
     </AnimatePresence>
   );
+
+  if (typeof document === 'undefined') return null;
+  return createPortal(modalContent, document.body);
 }

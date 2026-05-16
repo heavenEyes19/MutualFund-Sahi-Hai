@@ -82,9 +82,18 @@ export default function Profile() {
     }
   };
 
-  const handleVerifyOtpStep = () => {
+  const handleVerifyOtpStep = async () => {
     if (mpinOtp.length < 6) { toast.error('Enter the 6-digit OTP'); return; }
-    setMpinStep('set-mpin');
+    setIsSaving(true);
+    try {
+      await API.post('/users/verify-mpin-otp', { otp: mpinOtp });
+      toast.success('OTP verified!');
+      setMpinStep('set-mpin');
+    } catch (err) {
+      toast.error(err.response?.data?.msg || 'Incorrect OTP');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSetMpinViaOtp = async (e) => {
@@ -316,17 +325,8 @@ export default function Profile() {
                     className="w-full py-4 bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-xl shadow-xl shadow-indigo-500/20 hover:-translate-y-0.5 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Key size={18} />}
-                    {user.isMpinSet ? 'Change MPIN via Email OTP' : 'Set MPIN via Email OTP'}
+                    {user.isMpinSet ? 'Reset / Change MPIN' : 'Set MPIN via Email OTP'}
                   </button>
-                  {user.isMpinSet && (
-                    <button
-                      onClick={handleRequestMpinOtp}
-                      disabled={isSaving}
-                      className="w-full py-3 text-indigo-500 font-bold text-xs uppercase tracking-widest hover:text-indigo-600 transition-colors"
-                    >
-                      Forgot MPIN? Reset via Email OTP
-                    </button>
-                  )}
                 </div>
               )}
 
@@ -374,7 +374,7 @@ export default function Profile() {
                         maxLength={4}
                         value={mpinNew}
                         onChange={(e) => setMpinNew(e.target.value.replace(/\D/g, ''))}
-                        placeholder="4-6 digits"
+                        placeholder="4 digits"
                         className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20"
                         autoFocus
                       />
