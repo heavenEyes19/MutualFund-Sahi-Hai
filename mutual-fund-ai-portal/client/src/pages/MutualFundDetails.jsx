@@ -9,6 +9,7 @@ import {
 import { getMutualFundDetails, searchMutualFunds } from "../services/mutualFunds";
 import { getPortfolio, sellFund, createSIP, createRazorpayOrder, verifyRazorpayPayment } from "../services/portfolio";
 import { useKycStatus } from "../hooks/useKycStatus";
+import useCartStore from "../store/useCartStore";
 
 const parseNumber = (value) => {
   const parsed = Number.parseFloat(value);
@@ -91,6 +92,8 @@ export default function MutualFundDetails() {
   const [investAmount, setInvestAmount] = useState('');
   const [sipDate, setSipDate] = useState('1');
   const [chartRange, setChartRange] = useState('ALL');
+
+  const addToCart = useCartStore(state => state.addToCart);
 
   const [similarFunds, setSimilarFunds] = useState([]);
   const [similarLoading, setSimilarLoading] = useState(false);
@@ -594,7 +597,25 @@ export default function MutualFundDetails() {
             </div>
 
             <div className="mt-6 space-y-3">
-              <button disabled={isInactive} className="w-full py-3 bg-white border border-emerald-500 text-emerald-600 hover:bg-emerald-50 rounded-xl font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+              <button 
+                disabled={isInactive} 
+                onClick={() => {
+                  const amt = Number(investAmount);
+                  if (amt < 100) {
+                    alert("Minimum investment amount is ₹100");
+                    return;
+                  }
+                  addToCart({
+                    schemeCode: selectedFund.meta.scheme_code,
+                    schemeName: selectedFund.meta.scheme_name,
+                    amount: amt,
+                    type: investTab,
+                    duration: investTab === 'SIP' ? 12 : null, // default duration
+                    nav: latestNav
+                  });
+                  alert(`${selectedFund.meta.scheme_name} added to cart!`);
+                }}
+                className="w-full py-3 bg-white border border-emerald-500 text-emerald-600 hover:bg-emerald-50 rounded-xl font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                 Add to Cart
               </button>
               <button 

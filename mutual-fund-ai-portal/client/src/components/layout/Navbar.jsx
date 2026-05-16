@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Search, Bell, ShoppingCart, MoreHorizontal, Moon, Sun, LogOut, User, FileCheck } from 'lucide-react';
 import useAuthStore from '../../store/useAuthStore';
+import useCartStore from '../../store/useCartStore';
 
 export default function Navbar({ isDarkMode, onDarkModeToggle }) {
   const { user, logout } = useAuthStore();
+  const { cartItems } = useCartStore();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
@@ -140,9 +142,11 @@ export default function Navbar({ isDarkMode, onDarkModeToggle }) {
                 className="relative w-11 h-11 rounded-xl bg-[#EFEDEA] dark:bg-[#1A1A1A] hover:bg-[#E5E3E0] dark:hover:bg-[#222] flex items-center justify-center transition-colors border border-transparent"
               >
                 <ShoppingCart size={20} className="text-[#555] dark:text-[#CCC]" />
-                <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[#D86F45] rounded-full flex items-center justify-center text-[10px] font-bold text-white border-2 border-[#FAFAF7] dark:border-[#111111]">
-                  1
-                </div>
+                {cartItems.length > 0 && (
+                  <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[#D86F45] rounded-full flex items-center justify-center text-[10px] font-bold text-white border-2 border-[#FAFAF7] dark:border-[#111111]">
+                    {cartItems.length}
+                  </div>
+                )}
               </button>
             )}
 

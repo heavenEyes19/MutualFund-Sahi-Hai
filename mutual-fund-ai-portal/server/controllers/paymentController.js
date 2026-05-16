@@ -68,37 +68,43 @@ export const verifyPayment = async (req, res) => {
       return res.status(400).json({ message: "Invalid signature sent!" });
     }
 
-    // Add transaction
-    const units = parseFloat((amount / validNav).toFixed(4));
-    
-    const newTransaction = new Transaction({
-      user,
-      schemeCode,
-      schemeName,
-      type: "BUY",
-      amount,
-      nav: validNav,
-      units,
-    });
-    await newTransaction.save();
+    const itemsToProcess = req.body.items || [{ schemeCode, schemeName, amount, nav }];
 
-    // Update or create holding
-    let holding = await Holding.findOne({ user, schemeCode });
-    if (holding) {
-      holding.investedAmount += amount;
-      holding.units += units;
-      holding.avgNav = holding.investedAmount / holding.units;
-      await holding.save();
-    } else {
-      holding = new Holding({
+    for (const item of itemsToProcess) {
+      const validNav = parsePositiveNav(item.nav);
+      if (!validNav) continue;
+
+      const units = parseFloat((item.amount / validNav).toFixed(4));
+      
+      const newTransaction = new Transaction({
         user,
-        schemeCode,
-        schemeName,
+        schemeCode: item.schemeCode,
+        schemeName: item.schemeName,
+        type: "BUY",
+        amount: item.amount,
+        nav: validNav,
         units,
-        avgNav: validNav,
-        investedAmount: amount,
       });
-      await holding.save();
+      await newTransaction.save();
+
+      // Update or create holding
+      let holding = await Holding.findOne({ user, schemeCode: item.schemeCode });
+      if (holding) {
+        holding.investedAmount += item.amount;
+        holding.units += units;
+        holding.avgNav = holding.investedAmount / holding.units;
+        await holding.save();
+      } else {
+        holding = new Holding({
+          user,
+          schemeCode: item.schemeCode,
+          schemeName: item.schemeName,
+          units,
+          avgNav: validNav,
+          investedAmount: item.amount,
+        });
+        await holding.save();
+      }
     }
 
     res.json({ message: "Payment verified successfully" });
