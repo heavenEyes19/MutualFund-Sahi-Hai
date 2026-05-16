@@ -21,7 +21,6 @@ import Register from '../pages/Register';
 
 // Page imports - Investor
 import InvestorDashboard from '../pages/investor/Dashboard';
-import AIAdvisory from '../pages/investor/AIAdvisory';
 import Portfolio from '../pages/investor/Portfolio';
 import SIPs from '../pages/investor/SIPs';
 import History from '../pages/investor/History';
@@ -90,14 +89,7 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
-      {
-        path: 'ai-advisory',
-        element: (
-          <ProtectedRoute>
-            <AIAdvisory />
-          </ProtectedRoute>
-        ),
-      },
+
       {
         path: 'portfolio',
         element: (

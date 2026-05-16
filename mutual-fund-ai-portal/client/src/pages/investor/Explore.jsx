@@ -303,7 +303,7 @@ export default function Explore() {
                 <h2 className="text-2xl font-serif text-[#333] dark:text-[#EEE] tracking-tight mb-1">Funds by MFSH</h2>
                 <p className="text-xs text-slate-400 dark:text-slate-500 font-sans tracking-wide">Handpicked by our advisors</p>
               </div>
-              <button onClick={() => navigate('/dashboard-area/ai-advisory')} className="text-[13px] font-sans font-medium text-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center gap-1 transition-colors">
+              <button onClick={() => navigate('/dashboard-area/mutual-funds')} className="text-[13px] font-sans font-medium text-emerald-500 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center gap-1 transition-colors">
                 View all <ArrowRight size={14} />
               </button>
             </div>
@@ -329,8 +329,7 @@ export default function Explore() {
           {/* Health Card */}
           <section>
             <div
-              onClick={() => navigate('/dashboard-area/ai-advisory')}
-              className="relative rounded-[24px] p-7 shadow-lg cursor-pointer overflow-hidden transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 group"
+              className="relative rounded-[24px] p-7 shadow-lg overflow-hidden transition-all duration-300 hover:shadow-2xl group"
               style={{ background: 'linear-gradient(145deg, #8B3A1A 0%, #C96A2E 45%, #D4854A 100%)' }}
             >
               {/* Decorative blobs */}

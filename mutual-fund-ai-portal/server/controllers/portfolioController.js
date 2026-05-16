@@ -194,21 +194,36 @@ export const reviewPortfolio = async (req, res) => {
     const kycStatus = kyc ? kyc.status : "Not completed";
     const sipsList = sips.map(s => `${s.schemeName} (₹${s.amount}/month)`).join(", ");
 
-    let deterministicScore = 30; // base score for having an account
-    if (kyc && kyc.status === "Approved") deterministicScore += 20;
-    else if (kyc && kyc.status === "Pending") deterministicScore += 10;
-    if (sips.length > 0) deterministicScore += Math.min(20, sips.length * 5);
-    if (holdings.length > 0) deterministicScore += Math.min(20, holdings.length * 5);
-    if (holdings.length >= 3) deterministicScore += 10; // basic diversification bonus
+    let deterministicScore = 0;
+    
+    // KYC Approved is mandatory for any score > 0
+    if (kyc && kyc.status === "Approved") {
+      deterministicScore = 30; // Base score for being a verified investor
+      
+      // Investment Consistency (SIPs) - Max 30 points
+      if (sips.length > 0) {
+        deterministicScore += Math.min(30, sips.length * 10);
+      }
+      
+      // Portfolio Variety (Holdings) - Max 30 points
+      if (holdings.length > 0) {
+        deterministicScore += Math.min(30, holdings.length * 6);
+      }
+      
+      // Diversification Strategy - 10 points
+      if (holdings.length >= 3) {
+        deterministicScore += 10;
+      }
+    }
 
     let analysis = {
       healthScore: deterministicScore,
-      healthBadge: deterministicScore >= 80 ? "Excellent" : deterministicScore >= 60 ? "Good" : "Fair",
-      healthText: `Better than ${Math.max(10, deterministicScore - 15)}% of investors`,
-      riskProfile: "Moderate",
-      aiConfidence: 85,
-      confidenceBadge: "High",
-      confidenceText: "Strong recommendation"
+      healthBadge: deterministicScore >= 80 ? "Excellent" : deterministicScore >= 60 ? "Good" : deterministicScore > 0 ? "Fair" : "Unverified",
+      healthText: deterministicScore > 0 ? `Better than ${Math.max(10, deterministicScore - 15)}% of investors` : "Complete KYC to see your health score",
+      riskProfile: deterministicScore > 0 ? "Moderate" : "Undetermined",
+      aiConfidence: deterministicScore > 0 ? 85 : 0,
+      confidenceBadge: deterministicScore > 0 ? "High" : "N/A",
+      confidenceText: deterministicScore > 0 ? "Strong recommendation" : "Awaiting verification"
     };
 
     if (process.env.GROQ_API_KEY) {

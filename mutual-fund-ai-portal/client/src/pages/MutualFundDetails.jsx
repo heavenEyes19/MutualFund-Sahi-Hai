@@ -6,7 +6,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell
 } from "recharts";
 
-import { getMutualFundDetails } from "../services/mutualFunds";
+import { getMutualFundDetails, searchMutualFunds } from "../services/mutualFunds";
 import { getPortfolio, sellFund, createSIP, createRazorpayOrder, verifyRazorpayPayment } from "../services/portfolio";
 import { useKycStatus } from "../hooks/useKycStatus";
 
@@ -87,6 +87,52 @@ export default function MutualFundDetails() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showKycModal, setShowKycModal] = useState(false);
 
+  const [investTab, setInvestTab] = useState('SIP');
+  const [investAmount, setInvestAmount] = useState('');
+  const [sipDate, setSipDate] = useState('1');
+  const [chartRange, setChartRange] = useState('ALL');
+
+  const [similarFunds, setSimilarFunds] = useState([]);
+  const [similarLoading, setSimilarLoading] = useState(false);
+
+  useEffect(() => {
+    if (!selectedFund?.meta?.scheme_category) return;
+    
+    let active = true;
+    const loadSimilar = async () => {
+      setSimilarLoading(true);
+      try {
+        const cat = selectedFund.meta.scheme_category.split(' ')[0];
+        const res = await searchMutualFunds({ q: cat, limit: 6 });
+        if (!active) return;
+        
+        let allRes = [];
+        if (res.active) allRes = [...allRes, ...res.active];
+        if (res.historical) allRes = [...allRes, ...res.historical];
+        
+        allRes = allRes.filter(f => String(f.schemeCode) !== String(schemeCode)).slice(0, 4);
+        setSimilarFunds(allRes);
+      } catch (err) {
+        console.error("Failed to load similar funds", err);
+      } finally {
+        if (active) setSimilarLoading(false);
+      }
+    };
+    
+    loadSimilar();
+    return () => { active = false; };
+  }, [selectedFund?.meta?.scheme_category, schemeCode]);
+
+  const handleInvestClick = () => {
+    if (!kycLoading && kycStatus !== 'VERIFIED') setShowKycModal(true);
+    else {
+      setIsSipSelected(investTab === 'SIP');
+      setTxAmount(investAmount);
+      setTxType('buy');
+      setShowTxModal(true);
+    }
+  };
+
   useEffect(() => {
     const fetchPortfolio = async () => {
       try {
@@ -128,12 +174,41 @@ export default function MutualFundDetails() {
     };
   }, [schemeCode]);
 
-  const chartData = useMemo(() => {
-    if (!selectedFund?.data) return [];
-    const data = selectedFund.data;
-    const step = Math.max(1, Math.floor(data.length / 300));
+  const filteredData = useMemo(() => {
+    if (!selectedFund?.data || selectedFund.data.length === 0) return [];
     
-    return data
+    let daysToKeep = Infinity;
+    switch(chartRange) {
+      case '1D': daysToKeep = 1; break;
+      case '1W': daysToKeep = 7; break;
+      case '1M': daysToKeep = 30; break;
+      case '3M': daysToKeep = 90; break;
+      case '6M': daysToKeep = 180; break;
+      case '1Y': daysToKeep = 365; break;
+      case '3Y': daysToKeep = 1095; break;
+      case '5Y': daysToKeep = 1825; break;
+      default: daysToKeep = Infinity;
+    }
+
+    if (daysToKeep === Infinity) return selectedFund.data;
+
+    const [d, m, y] = selectedFund.data[0].date.split('-').map(Number);
+    const latestDate = new Date(y, m - 1, d);
+    const targetDate = new Date(latestDate);
+    targetDate.setDate(targetDate.getDate() - daysToKeep);
+
+    return selectedFund.data.filter(entry => {
+      const [ed, em, ey] = entry.date.split('-').map(Number);
+      const entryDate = new Date(ey, em - 1, ed);
+      return entryDate >= targetDate;
+    });
+  }, [selectedFund, chartRange]);
+
+  const chartData = useMemo(() => {
+    if (filteredData.length === 0) return [];
+    const step = Math.max(1, Math.floor(filteredData.length / 300));
+    
+    return filteredData
       .filter((_, i) => i % step === 0)
       .reverse()
       .map(entry => ({
@@ -141,7 +216,7 @@ export default function MutualFundDetails() {
         nav: parseNumber(entry.nav)
       }))
       .filter(entry => entry.nav !== null);
-  }, [selectedFund]);
+  }, [filteredData]);
 
   const pieData = useMemo(() => {
     return generatePieData(selectedFund?.meta?.scheme_category);
@@ -232,17 +307,17 @@ export default function MutualFundDetails() {
 
   if (detailLoading) {
     return (
-      <div className="min-h-screen bg-[#0B1120] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      <div className="min-h-screen bg-[#FAFAFA] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
       </div>
     );
   }
 
   if (!selectedFund) {
     return (
-      <div className="min-h-screen bg-[#0B1120] text-slate-400 p-8 flex flex-col items-center justify-center">
-        <p>Fund details could not be loaded.</p>
-        <button onClick={() => navigate('/dashboard-area/mutual-funds')} className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg">
+      <div className="min-h-screen bg-[#FAFAFA] text-slate-500 p-8 flex flex-col items-center justify-center">
+        <p className="font-semibold">Fund details could not be loaded.</p>
+        <button onClick={() => navigate('/dashboard-area/mutual-funds')} className="mt-4 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold">
           Back to Funds
         </button>
       </div>
@@ -280,81 +355,82 @@ export default function MutualFundDetails() {
     return null;
   };
 
-  const navChangePercent = selectedFund.data && selectedFund.data.length >= 2
-    ? ((latestNav - parseNumber(selectedFund.data[1].nav)) / parseNumber(selectedFund.data[1].nav)) * 100
+  const oldestNavInRange = filteredData.length > 0 ? parseNumber(filteredData[filteredData.length - 1].nav) : null;
+  const navChangePercent = (latestNav && oldestNavInRange && oldestNavInRange > 0) 
+    ? ((latestNav - oldestNavInRange) / oldestNavInRange) * 100 
     : 0;
   const isNavChangePositive = navChangePercent >= 0;
 
   return (
-    <div className="w-full min-h-screen bg-[#0B1120] text-slate-200 font-sans pb-10">
+    <div className="w-full min-h-screen bg-[#FAFAFA] text-slate-900 font-sans pb-10">
       <div className="max-w-6xl mx-auto p-4 lg:p-8 space-y-8">
         
-        <button onClick={() => navigate('/dashboard-area/mutual-funds')} className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors">
+        <button onClick={() => navigate('/dashboard-area/mutual-funds')} className="flex items-center gap-2 text-slate-500 hover:text-emerald-600 font-semibold transition-colors">
           <ArrowLeft size={16} /> Back to Explorer
         </button>
 
         {/* HERO CARD */}
-        <div className={`backdrop-blur-md rounded-3xl p-6 lg:p-8 shadow-2xl relative overflow-hidden flex flex-col lg:flex-row lg:items-center justify-between gap-6 ${isInactive ? 'bg-[#111827]/70 border border-amber-900/40' : 'bg-[#111827]/90 border border-slate-700/50'}`}>
-          <div className="absolute -top-24 -right-24 w-64 h-64 bg-blue-500/10 blur-[80px] rounded-full pointer-events-none"></div>
-          <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-purple-500/10 blur-[80px] rounded-full pointer-events-none"></div>
+        <div className={`rounded-3xl p-6 lg:p-8 shadow-sm relative overflow-hidden flex flex-col lg:flex-row lg:items-center justify-between gap-6 ${isInactive ? 'bg-slate-50 border border-amber-200' : 'bg-white border border-slate-100'}`}>
+          <div className="absolute -top-24 -right-24 w-64 h-64 bg-emerald-500/5 blur-[80px] rounded-full pointer-events-none"></div>
+          <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-blue-500/5 blur-[80px] rounded-full pointer-events-none"></div>
 
           <div className="relative z-10 flex items-start gap-5">
-            <div className={`w-16 h-16 mt-1 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-lg border shrink-0 ${isInactive ? 'bg-gradient-to-br from-slate-600 to-slate-700 border-white/5' : 'bg-gradient-to-br from-blue-600 to-indigo-600 border-white/10'}`}>
-              {isInactive ? <Archive size={28} className="text-amber-400/80" /> : (selectedFund.meta.fund_house?.charAt(0) || 'F')}
+            <div className={`w-16 h-16 mt-1 rounded-2xl flex items-center justify-center font-bold text-2xl shrink-0 ${isInactive ? 'bg-slate-100 text-slate-500' : 'bg-emerald-50 text-emerald-600'}`}>
+              {isInactive ? <Archive size={28} className="text-amber-500" /> : (selectedFund.meta.fund_house?.charAt(0) || 'F')}
             </div>
             <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-white mb-3 leading-tight">
+              <h1 className="text-2xl lg:text-3xl font-extrabold text-slate-900 mb-3 leading-tight">
                 {selectedFund.meta.scheme_name}
               </h1>
               <div className="flex flex-wrap gap-2 items-center">
-                <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 border border-slate-700">
+                <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md bg-slate-100 text-slate-600 border border-slate-200">
                   {selectedFund.meta.fund_house}
                 </span>
                 {isInactive ? (
-                  <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md bg-amber-50 text-amber-600 border border-amber-200 flex items-center gap-1">
                     <Archive size={9}/> Inactive Fund
                   </span>
                 ) : (
                   getSchemeBadges(selectedFund.meta.scheme_name).map(b => (
-                    <span key={b} className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                    <span key={b} className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md bg-slate-50 text-slate-500 border border-slate-200">
                       {b}
                     </span>
                   ))
                 )}
-                <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                <span className="text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center gap-1">
                   <Activity size={10}/> {selectedFund.meta.scheme_category || 'Mutual Fund'}
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="relative z-10 flex flex-col sm:flex-row items-center gap-6 lg:gap-8 bg-[#0B1120]/50 p-5 rounded-2xl border border-slate-800 w-full lg:w-auto">
+          <div className="relative z-10 flex flex-col sm:flex-row items-center gap-6 lg:gap-8 bg-slate-50 p-5 rounded-2xl border border-slate-100 w-full lg:w-auto">
             <div className="text-center sm:text-left">
               <p className="text-[11px] text-slate-500 uppercase font-semibold tracking-wider mb-1">
                 {isInactive ? 'Last Known NAV' : 'Latest NAV'}
               </p>
               <div className="flex items-baseline justify-center sm:justify-start gap-2">
                 {isInactive ? (
-                  <span className="text-lg font-bold text-amber-400/80">Historical Only</span>
+                  <span className="text-lg font-bold text-amber-500">Historical Only</span>
                 ) : (
                   <>
-                    <span className="text-3xl font-bold text-white">{formatNavValue(latestNav)}</span>
-                    <span className={`text-xs font-medium flex items-center px-1.5 py-0.5 rounded ${isNavChangePositive ? 'text-emerald-400 bg-emerald-500/10' : 'text-red-400 bg-red-500/10'}`}>
+                    <span className="text-3xl font-extrabold text-slate-900">{formatNavValue(latestNav)}</span>
+                    <span className={`text-xs font-bold flex items-center px-1.5 py-0.5 rounded ${isNavChangePositive ? 'text-emerald-600 bg-emerald-100' : 'text-red-600 bg-red-100'}`}>
                       {isNavChangePositive ? <TrendingUp size={12} className="mr-0.5"/> : <TrendingDown size={12} className="mr-0.5"/>} {navChangePercent.toFixed(2)}%
                     </span>
                   </>
                 )}
               </div>
-              <p className="text-[10px] text-slate-500 mt-1">
+              <p className="text-[10px] text-slate-500 mt-1 font-medium">
                 As of {formatNavDate(latestNavDate)}
               </p>
             </div>
 
-            <div className="hidden sm:block w-px h-16 bg-slate-800"></div>
+            <div className="hidden sm:block w-px h-16 bg-slate-200"></div>
 
             <div className="flex flex-col gap-3 w-full sm:w-auto">
               {isInactive ? (
-                <button disabled className="w-full px-6 py-2.5 bg-slate-700/50 text-slate-500 rounded-xl text-sm font-semibold cursor-not-allowed border border-slate-700/50">
+                <button disabled className="w-full px-6 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-sm font-bold cursor-not-allowed border border-slate-200">
                   Investing Disabled
                 </button>
               ) : (
@@ -364,7 +440,7 @@ export default function MutualFundDetails() {
                       if (!kycLoading && kycStatus !== 'VERIFIED') setShowKycModal(true);
                       else { setTxType('buy'); setShowTxModal(true); }
                     }}
-                    className="w-full px-8 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition-all shadow-[0_0_20px_rgba(37,99,235,0.2)] hover:shadow-[0_0_25px_rgba(37,99,235,0.4)] flex justify-center items-center gap-2"
+                    className="w-full px-8 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-bold transition-all shadow-sm flex justify-center items-center gap-2"
                   >
                     <Wallet size={16}/> Invest Now
                   </button>
@@ -386,9 +462,10 @@ export default function MutualFundDetails() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-[#111827]/80 backdrop-blur-md border border-slate-700/50 rounded-3xl p-6 shadow-xl h-[400px] flex flex-col">
-            <h3 className="text-sm uppercase tracking-wider font-bold text-slate-300 mb-4 flex items-center gap-2">
-              <Activity size={16} className={isInactive ? 'text-amber-400' : 'text-blue-500'} />
+          <div className="lg:col-span-2 flex flex-col gap-6">
+            <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm h-[400px] flex flex-col">
+            <h3 className="text-sm uppercase tracking-wider font-bold text-slate-500 mb-4 flex items-center gap-2">
+              <Activity size={16} className={isInactive ? 'text-amber-500' : 'text-emerald-500'} />
               {isInactive ? 'Historical Performance' : 'Performance History'}
             </h3>
             <div className="flex-1 w-full min-h-0">
@@ -396,98 +473,214 @@ export default function MutualFundDetails() {
                 <AreaChart data={chartData} margin={{top: 10, right: 10, left: -20, bottom: 0}}>
                   <defs>
                     <linearGradient id="colorNav" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4}/>
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1e293b" />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 10 }} tickLine={false} axisLine={false} minTickGap={30} />
                   <YAxis domain={['auto', 'auto']} tick={{ fill: '#64748b', fontSize: 10 }} tickLine={false} axisLine={false} tickFormatter={(val) => `₹${val}`} />
-                  <RechartsTooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', border: '1px solid #1e293b' }} itemStyle={{ color: '#e2e8f0', fontWeight: 'bold' }} labelStyle={{ color: '#94a3b8', fontSize: '12px' }} formatter={(value) => [`₹${value}`, 'NAV']} />
-                  <Area type="monotone" dataKey="nav" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorNav)" activeDot={{ r: 6, fill: '#3b82f6', stroke: '#0B1120', strokeWidth: 3 }} />
+                  <RechartsTooltip contentStyle={{ backgroundColor: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0' }} itemStyle={{ color: '#0f172a', fontWeight: 'bold' }} labelStyle={{ color: '#64748b', fontSize: '12px' }} formatter={(value) => [`₹${value}`, 'NAV']} />
+                  <Area type="monotone" dataKey="nav" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorNav)" activeDot={{ r: 6, fill: '#10b981', stroke: '#ffffff', strokeWidth: 3 }} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
+            
+            {/* Chart Range Toggles */}
+            <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-slate-100">
+              {['1D', '1W', '1M', '3M', '6M', '1Y', '3Y', '5Y', 'ALL'].map(range => (
+                <button
+                  key={range}
+                  onClick={() => setChartRange(range)}
+                  className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${chartRange === range ? 'bg-emerald-500 text-white shadow-sm' : 'bg-slate-50 text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
+                >
+                  {range}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="bg-[#111827]/80 backdrop-blur-md border border-slate-700/50 rounded-3xl p-6 shadow-xl flex flex-col">
-            <h3 className="text-sm uppercase tracking-wider font-bold text-slate-300 mb-4 flex items-center gap-2">
-              <PieChartIcon size={16} className="text-emerald-400" />
-              Asset Allocation
-            </h3>
-            <div className="flex-1 relative flex items-center justify-center min-h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={85} stroke="rgba(15,23,42,0.8)" strokeWidth={2} paddingAngle={2} dataKey="value">
-                    {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
-                  </Pie>
-                  <RechartsTooltip contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px'}} itemStyle={{color: '#f8fafc', fontWeight: 'bold'}} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-xs text-slate-500 font-semibold uppercase">Total</span>
-                <span className="text-2xl font-bold text-white">100%</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-gradient-to-br from-emerald-50 to-white border border-emerald-100 rounded-3xl p-6 shadow-sm relative overflow-hidden flex flex-col">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-100/50 blur-[50px] pointer-events-none rounded-full"></div>
+              <h3 className="text-sm uppercase tracking-wider font-bold text-emerald-800 mb-4 flex items-center gap-2 relative z-10">
+                <Sparkles size={16} className="text-emerald-500" /> AI Insight
+              </h3>
+              <p className="text-sm text-emerald-900/80 leading-relaxed relative z-10">
+                This <span className="text-emerald-700 font-bold">{selectedFund.meta.scheme_category}</span> fund exhibits characteristic volatility but offers strong potential for long-term wealth creation. It maintains a well-balanced portfolio, making it ideal for investors with a 5+ year horizon.
+              </p>
+            </div>
+
+            <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm flex flex-col">
+              <h3 className="text-sm uppercase tracking-wider font-bold text-slate-500 mb-4 flex items-center gap-2">
+                <PieChartIcon size={16} className="text-emerald-500" />
+                Asset Allocation
+              </h3>
+              <div className="flex-1 relative flex items-center justify-center min-h-[150px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={70} stroke="#ffffff" strokeWidth={2} paddingAngle={2} dataKey="value">
+                      {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                    </Pie>
+                    <RechartsTooltip contentStyle={{backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px'}} itemStyle={{color: '#0f172a', fontWeight: 'bold'}} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-[10px] text-slate-500 font-semibold uppercase">Total</span>
+                  <span className="text-xl font-bold text-slate-900">100%</span>
+                </div>
+              </div>
+              <div className="mt-4 space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                {pieData.map(d => (
+                  <div key={d.name} className="flex items-center justify-between text-xs font-semibold">
+                    <div className="flex items-center gap-2 text-slate-600">
+                      <div className="w-2 h-2 rounded-full" style={{backgroundColor: d.color}}></div>
+                      {d.name}
+                    </div>
+                    <div className="text-slate-900">{d.value}%</div>
+                  </div>
+                ))}
               </div>
             </div>
-            <div className="mt-6 space-y-3 bg-[#0B1120]/50 p-4 rounded-2xl border border-slate-800">
-              {pieData.map(d => (
-                <div key={d.name} className="flex items-center justify-between text-sm font-semibold">
-                  <div className="flex items-center gap-2 text-slate-300">
-                    <div className="w-3 h-3 rounded-full" style={{backgroundColor: d.color}}></div>
-                    {d.name}
+          </div>
+          </div>
+
+          <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm flex flex-col h-fit self-start sticky top-24">
+            <div className="flex bg-slate-50 p-1.5 rounded-xl mb-6 border border-slate-100">
+              <button 
+                onClick={() => setInvestTab('SIP')} 
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all tracking-wider ${investTab === 'SIP' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-500 hover:text-slate-900'}`}
+              >
+                Monthly SIP
+              </button>
+              <button 
+                onClick={() => setInvestTab('LUMPSUM')} 
+                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all tracking-wider ${investTab === 'LUMPSUM' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-500 hover:text-slate-900'}`}
+              >
+                One-time
+              </button>
+            </div>
+
+            <div className="flex-1">
+              {investTab === 'SIP' ? (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">SIP Amount</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">₹</span>
+                      <input type="number" min="100" step="100" value={investAmount} onChange={e => setInvestAmount(e.target.value)} placeholder="5,000" className="w-full pl-8 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-slate-900 font-bold transition-all shadow-sm" />
+                    </div>
                   </div>
-                  <div className="text-slate-100">{d.value}%</div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Monthly SIP Date</label>
+                    <select value={sipDate} onChange={e => setSipDate(e.target.value)} className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-slate-900 font-bold transition-all appearance-none shadow-sm">
+                      {Array.from({length: 28}, (_, i) => i + 1).map(d => (
+                        <option key={d} value={d}>{d} of every month</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-              ))}
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Investment Amount</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">₹</span>
+                      <input type="number" min="100" step="100" value={investAmount} onChange={e => setInvestAmount(e.target.value)} placeholder="50,000" className="w-full pl-8 pr-4 py-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-slate-900 font-bold transition-all shadow-sm" />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 space-y-3">
+              <button disabled={isInactive} className="w-full py-3 bg-white border border-emerald-500 text-emerald-600 hover:bg-emerald-50 rounded-xl font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                Add to Cart
+              </button>
+              <button 
+                disabled={isInactive}
+                onClick={handleInvestClick}
+                className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {investTab === 'SIP' ? 'Start SIP' : 'Invest Now'}
+              </button>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2 bg-[#111827]/80 backdrop-blur-md border border-slate-700/50 rounded-3xl p-6 shadow-xl">
-            <h3 className="text-sm uppercase tracking-wider font-bold text-slate-300 mb-6 flex items-center gap-2">
-              <Calendar size={16} className="text-blue-400" />
-              Fund Information
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-              <div><p className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1.5">Scheme Code</p><p className="text-slate-200 font-bold">{selectedFund.meta.scheme_code}</p></div>
-              <div><p className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1.5">Category</p><p className="text-slate-200 font-bold truncate">{selectedFund.meta.scheme_category}</p></div>
-              <div><p className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1.5">Type</p><p className="text-slate-200 font-bold">{selectedFund.meta.scheme_type || 'Open Ended'}</p></div>
-              <div><p className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1.5">Fund House</p><p className="text-slate-200 font-bold truncate">{selectedFund.meta.fund_house}</p></div>
-            </div>
-          </div>
-
-          <div className="md:col-span-1 bg-gradient-to-br from-[#1e1b4b] to-[#111827] border border-purple-500/20 rounded-3xl p-6 shadow-[0_0_30px_rgba(139,92,246,0.1)] relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/20 blur-[50px] pointer-events-none rounded-full"></div>
-            <h3 className="text-sm uppercase tracking-wider font-bold text-purple-300 mb-4 flex items-center gap-2 relative z-10">
-              <Sparkles size={16} className="text-purple-400" /> AI Insight
-            </h3>
-            <p className="text-sm text-purple-100/80 leading-relaxed relative z-10">
-              This <span className="text-purple-200 font-semibold">{selectedFund.meta.scheme_category}</span> fund exhibits characteristic volatility but offers strong potential for long-term wealth creation. It maintains a well-balanced portfolio, making it ideal for investors with a 5+ year horizon.
-            </p>
+        <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm">
+          <h3 className="text-sm uppercase tracking-wider font-bold text-slate-500 mb-6 flex items-center gap-2">
+            <Calendar size={16} className="text-emerald-500" />
+            Fund Information
+          </h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            <div><p className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1.5">Scheme Code</p><p className="text-slate-900 font-bold">{selectedFund.meta.scheme_code}</p></div>
+            <div><p className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1.5">Category</p><p className="text-slate-900 font-bold truncate">{selectedFund.meta.scheme_category}</p></div>
+            <div><p className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1.5">Type</p><p className="text-slate-900 font-bold">{selectedFund.meta.scheme_type || 'Open Ended'}</p></div>
+            <div><p className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-1.5">Fund House</p><p className="text-slate-900 font-bold truncate">{selectedFund.meta.fund_house}</p></div>
           </div>
         </div>
 
       </div>
 
+      {similarFunds.length > 0 && (
+        <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm mt-6">
+          <h3 className="text-sm uppercase tracking-wider font-bold text-slate-500 mb-6 flex items-center gap-2">
+            <TrendingUp size={16} className="text-emerald-500" />
+            Similar Funds You Might Like
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {similarFunds.map(fund => (
+              <div 
+                key={fund.schemeCode}
+                onClick={() => {
+                  navigate(`/dashboard-area/mutual-funds/${fund.schemeCode}`);
+                  window.scrollTo(0,0);
+                }}
+                className="bg-slate-50 border border-slate-100 rounded-2xl p-5 hover:border-emerald-500/50 hover:bg-white transition-all cursor-pointer group shadow-sm"
+              >
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-lg mb-4">
+                  {fund.schemeName.charAt(0)}
+                </div>
+                <h4 className="text-slate-900 font-bold text-sm line-clamp-2 mb-2 group-hover:text-emerald-600 transition-colors">{fund.schemeName}</h4>
+                <div className="flex justify-between items-center mt-4">
+                  <div>
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">1Y Return</p>
+                    <p className={`text-sm font-bold ${fund.return1y > 0 ? 'text-emerald-600' : fund.return1y < 0 ? 'text-red-600' : 'text-slate-500'}`}>
+                      {fund.return1y ? `${fund.return1y > 0 ? '+' : ''}${fund.return1y}%` : '--'}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">3Y Return</p>
+                    <p className={`text-sm font-bold ${fund.return3y > 0 ? 'text-emerald-600' : fund.return3y < 0 ? 'text-red-600' : 'text-slate-500'}`}>
+                      {fund.return3y ? `${fund.return3y > 0 ? '+' : ''}${fund.return3y}%` : '--'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <AnimatePresence>
         {showTxModal && (
-          <motion.div initial={{opacity: 0}} animate={{opacity: 1}} exit={{opacity: 0}} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B1120]/80 backdrop-blur-md">
-            <motion.div initial={{scale: 0.95, y: 20}} animate={{scale: 1, y: 0}} exit={{scale: 0.95, y: 20}} className="bg-[#111827] border border-slate-700/80 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden relative">
+          <motion.div initial={{opacity: 0}} animate={{opacity: 1}} exit={{opacity: 0}} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+            <motion.div initial={{scale: 0.95, y: 20}} animate={{scale: 1, y: 0}} exit={{scale: 0.95, y: 20}} className="bg-white border border-slate-100 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden relative">
               <div className="p-6">
-                <button onClick={() => setShowTxModal(false)} className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"><X size={16} /></button>
-                <h3 className="text-2xl font-bold text-white mb-1">{txType === 'buy' ? (isSipSelected ? 'Start SIP' : 'Buy Lumpsum') : 'Redeem Mutual Fund'}</h3>
-                <p className="text-xs font-medium text-slate-400 mb-6 bg-slate-800/50 inline-block px-3 py-1.5 rounded-lg border border-slate-700/50">{selectedFund?.meta?.scheme_name}</p>
+                <button onClick={() => setShowTxModal(false)} className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:text-slate-900 hover:bg-slate-200 transition-colors"><X size={16} /></button>
+                <h3 className="text-2xl font-extrabold text-slate-900 mb-1">{txType === 'buy' ? (isSipSelected ? 'Start SIP' : 'Buy Lumpsum') : 'Redeem Mutual Fund'}</h3>
+                <p className="text-xs font-bold text-slate-500 mb-6 bg-slate-50 inline-block px-3 py-1.5 rounded-lg border border-slate-200">{selectedFund?.meta?.scheme_name}</p>
 
                 {txType === 'buy' && (
-                  <div className="flex bg-[#0B1120] p-1.5 rounded-xl mb-6 border border-slate-800">
-                    <button type="button" onClick={() => setIsSipSelected(false)} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all uppercase tracking-wider ${!isSipSelected ? 'bg-blue-600 shadow-md text-white' : 'text-slate-500 hover:text-slate-300'}`}>Lumpsum</button>
-                    <button type="button" onClick={() => setIsSipSelected(true)} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all uppercase tracking-wider ${isSipSelected ? 'bg-blue-600 shadow-md text-white' : 'text-slate-500 hover:text-slate-300'}`}>SIP</button>
+                  <div className="flex bg-slate-50 p-1.5 rounded-xl mb-6 border border-slate-100">
+                    <button type="button" onClick={() => setIsSipSelected(false)} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all uppercase tracking-wider ${!isSipSelected ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-500 hover:text-slate-900'}`}>Lumpsum</button>
+                    <button type="button" onClick={() => setIsSipSelected(true)} className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all uppercase tracking-wider ${isSipSelected ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-500 hover:text-slate-900'}`}>SIP</button>
                   </div>
                 )}
 
                 {txMessage && (
-                  <div className={`mb-6 p-4 rounded-xl flex items-start gap-3 text-sm font-medium border ${txMessage.type === 'success' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
+                  <div className={`mb-6 p-4 rounded-xl flex items-start gap-3 text-sm font-bold border ${txMessage.type === 'success' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-red-50 text-red-600 border-red-200'}`}>
                     {txMessage.type === 'success' ? <CheckCircle2 className="shrink-0 mt-0.5" size={18} /> : <ShieldAlert className="shrink-0 mt-0.5" size={18} />}
                     <span>{txMessage.text}</span>
                   </div>
@@ -495,17 +688,17 @@ export default function MutualFundDetails() {
 
                 <form onSubmit={handleTransaction}>
                   <div className="mb-6">
-                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Amount (₹)</label>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Amount (₹)</label>
                     <div className="relative">
                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-medium">₹</span>
-                      <input type="number" min="100" step="100" required value={txAmount} onChange={(e) => setTxAmount(e.target.value)} placeholder="5,000" className="w-full pl-8 pr-4 py-3.5 bg-[#0B1120] border border-slate-700/80 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-white text-lg font-bold transition-all" />
+                      <input type="number" min="100" step="100" required value={txAmount} onChange={(e) => setTxAmount(e.target.value)} placeholder="5,000" className="w-full pl-8 pr-4 py-3.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-slate-900 text-lg font-bold transition-all shadow-sm" />
                     </div>
                     <div className="flex justify-between mt-2 px-1">
                       <p className="text-[10px] text-slate-500 font-medium">MIN: ₹100</p>
-                      <p className="text-[10px] text-blue-400 font-medium bg-blue-500/10 px-2 py-0.5 rounded">NAV: {formatNavValue(latestNav)}</p>
+                      <p className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">NAV: {formatNavValue(latestNav)}</p>
                     </div>
                     {txType === 'sell' && currentHolding && latestNav > 0 && (
-                      <button type="button" onClick={() => setTxAmount(String(Math.floor(currentHolding.units * latestNav)))} className="mt-3 w-full py-2.5 rounded-xl border border-red-500/30 bg-red-500/5 hover:bg-red-500/10 text-red-400 text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2">
+                      <button type="button" onClick={() => setTxAmount(String(Math.floor(currentHolding.units * latestNav)))} className="mt-3 w-full py-2.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2">
                         Sell All
                       </button>
                     )}
@@ -513,8 +706,8 @@ export default function MutualFundDetails() {
 
                   {txType === 'buy' && isSipSelected && (
                     <div className="mb-8">
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Duration</label>
-                      <select value={txDuration} onChange={(e) => setTxDuration(e.target.value)} className="w-full px-4 py-3.5 bg-[#0B1120] border border-slate-700/80 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-white text-sm font-bold transition-all appearance-none">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Duration</label>
+                      <select value={txDuration} onChange={(e) => setTxDuration(e.target.value)} className="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none text-slate-900 text-sm font-bold transition-all appearance-none shadow-sm">
                         <option value="6">6 Months</option>
                         <option value="12">1 Year</option>
                         <option value="36">3 Years</option>
@@ -524,7 +717,7 @@ export default function MutualFundDetails() {
                     </div>
                   )}
 
-                  <button type="submit" disabled={txLoading} className={`w-full py-4 rounded-xl text-white font-bold text-sm tracking-wide transition-all shadow-lg flex justify-center items-center gap-2 ${txLoading ? 'opacity-70 cursor-not-allowed' : ''} ${txType === 'buy' ? 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400' : 'bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400'}`}>
+                  <button type="submit" disabled={txLoading} className={`w-full py-4 rounded-xl text-white font-bold text-sm tracking-wide transition-all shadow-md flex justify-center items-center gap-2 ${txLoading ? 'opacity-70 cursor-not-allowed' : ''} ${txType === 'buy' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-red-500 hover:bg-red-600'}`}>
                     {txLoading ? 'PROCESSING...' : `CONFIRM ${txType === 'buy' && isSipSelected ? 'SIP' : txType.toUpperCase()}`}
                   </button>
                 </form>
@@ -534,30 +727,30 @@ export default function MutualFundDetails() {
         )}
 
         {showSuccessModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B1120]/90 backdrop-blur-lg">
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-[#111827] border border-slate-700 rounded-3xl p-8 max-w-sm w-full text-center relative overflow-hidden">
-              <div className="w-20 h-20 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-6"><CheckCircle2 size={40} /></div>
-              <h3 className="text-2xl font-bold text-white mb-2">Order Successful!</h3>
-              <p className="text-sm text-slate-400 mb-8 leading-relaxed">Your {isSipSelected ? 'SIP' : 'Lumpsum'} investment for {selectedFund?.meta?.scheme_name} has been processed.</p>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white border border-slate-100 rounded-3xl p-8 max-w-sm w-full text-center relative overflow-hidden shadow-2xl">
+              <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6"><CheckCircle2 size={40} /></div>
+              <h3 className="text-2xl font-extrabold text-slate-900 mb-2">Order Successful!</h3>
+              <p className="text-sm text-slate-500 mb-8 font-medium">Your {isSipSelected ? 'SIP' : 'Lumpsum'} investment for {selectedFund?.meta?.scheme_name} has been processed.</p>
               <div className="space-y-3">
-                <button onClick={() => navigate('/dashboard-area/portfolio')} className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-sm tracking-wide">GO TO PORTFOLIO</button>
-                <button onClick={() => setShowSuccessModal(false)} className="w-full py-3.5 text-slate-500 hover:text-slate-300 text-xs font-bold tracking-wider uppercase">Continue Browsing</button>
+                <button onClick={() => navigate('/dashboard-area/portfolio')} className="w-full py-3.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold text-sm tracking-wide">GO TO PORTFOLIO</button>
+                <button onClick={() => setShowSuccessModal(false)} className="w-full py-3.5 text-slate-500 hover:text-slate-900 text-xs font-bold tracking-wider uppercase">Continue Browsing</button>
               </div>
             </motion.div>
           </div>
         )}
 
         {showKycModal && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B1120]/80 backdrop-blur-md">
-            <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-[#111827] border border-slate-700/80 rounded-3xl w-full max-w-sm overflow-hidden relative">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+            <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-white border border-slate-100 rounded-3xl w-full max-w-sm overflow-hidden relative shadow-2xl">
               <div className="p-7 text-center">
-                <button onClick={() => setShowKycModal(false)} className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-slate-800 text-slate-400 hover:text-white transition-colors"><X size={16} /></button>
-                <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4"><ShieldAlert size={30} className="text-blue-400" /></div>
-                <h3 className="text-xl font-bold text-white mb-2">Complete Your KYC</h3>
-                <p className="text-slate-400 text-sm leading-relaxed mb-6">Complete your KYC to start investing. It only takes a few minutes.</p>
+                <button onClick={() => setShowKycModal(false)} className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:text-slate-900 transition-colors"><X size={16} /></button>
+                <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4"><ShieldAlert size={30} className="text-emerald-500" /></div>
+                <h3 className="text-xl font-extrabold text-slate-900 mb-2">Complete Your KYC</h3>
+                <p className="text-slate-500 text-sm font-medium mb-6">Complete your KYC to start investing. It only takes a few minutes.</p>
                 <div className="space-y-3">
-                  <button onClick={() => navigate('/dashboard-area/profile')} className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl">Complete KYC Now</button>
-                  <button onClick={() => setShowKycModal(false)} className="w-full py-2.5 text-slate-500 text-xs font-bold tracking-wider uppercase">Cancel</button>
+                  <button onClick={() => navigate('/dashboard-area/profile')} className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl shadow-sm">Complete KYC Now</button>
+                  <button onClick={() => setShowKycModal(false)} className="w-full py-2.5 text-slate-500 hover:text-slate-900 text-xs font-bold tracking-wider uppercase">Cancel</button>
                 </div>
               </div>
             </motion.div>

@@ -35,7 +35,7 @@ const normaliseData = (raw) => {
 };
 
 /** A compact, theme-matched message bubble for the widget */
-const WidgetMessage = ({ msg }) => {
+const WidgetMessage = ({ msg, isDetailedView }) => {
   const [expanded, setExpanded] = useState(false);
   const isUser = msg.type === 'user';
 
@@ -99,7 +99,7 @@ const WidgetMessage = ({ msg }) => {
         )}
 
         {/* Expandable details */}
-        {hasMore && (
+        {hasMore && isDetailedView && (
           <div>
             <button
               onClick={() => setExpanded(v => !v)}
@@ -277,7 +277,7 @@ const ChatWidget = () => {
                     </div>
                   );
                 }
-                return <WidgetMessage key={idx} msg={msg} />;
+                return <WidgetMessage key={idx} msg={msg} isDetailedView={true} />;
               })}
               <div ref={messagesEndRef} />
             </div>
@@ -391,7 +391,7 @@ const ChatWidget = () => {
                     </div>
                   );
                 }
-                return <WidgetMessage key={idx} msg={msg} />;
+                return <WidgetMessage key={idx} msg={msg} isDetailedView={false} />;
               })}
               <div ref={messagesEndRef} />
             </div>

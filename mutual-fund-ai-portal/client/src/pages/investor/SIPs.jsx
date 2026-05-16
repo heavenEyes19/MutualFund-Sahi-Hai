@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import API from '../../services/api';
 import {
   Play, Pause, Plus, Calendar, TrendingUp, IndianRupee, Clock, Calculator
@@ -13,6 +14,7 @@ const SIPs = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const { kycStatus, kycRejectionReason, loading: kycLoading } = useKycStatus();
+  const navigate = useNavigate();
 
   // Calculator State
   const [calcAmount, setCalcAmount] = useState(100);
@@ -98,7 +100,7 @@ const SIPs = () => {
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">Automate your investments and build wealth over time.</p>
         </div>
-        <button className="flex items-center space-x-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-lg transition-all transform hover:scale-105 font-medium">
+        <button onClick={() => navigate('/dashboard-area/mutual-funds')} className="flex items-center space-x-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-lg transition-all transform hover:scale-105 font-medium">
           <Plus size={20} />
           <span>Create SIP</span>
         </button>
@@ -274,7 +276,7 @@ const SIPs = () => {
                 Your Earnings <span className="font-bold text-gray-900 dark:text-white ml-2">₹{finalEarnings.toLocaleString('en-IN')}</span>
               </p>
             </div>
-            <button className="w-full py-4 bg-[#e21b22] hover:bg-red-700 text-white font-bold text-lg uppercase transition-colors">
+            <button onClick={() => navigate('/dashboard-area/mutual-funds')} className="w-full py-4 bg-[#e21b22] hover:bg-red-700 text-white font-bold text-lg uppercase transition-colors">
               Start a SIP
             </button>
           </div>
