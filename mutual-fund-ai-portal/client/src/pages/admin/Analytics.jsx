@@ -1,4 +1,5 @@
 import { BarChart3, Users, Database, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/useAuthStore';
 
 /**
@@ -6,6 +7,7 @@ import useAuthStore from '../../store/useAuthStore';
  */
 const AdminPlatformAnalytics = () => {
   const { user } = useAuthStore();
+  const navigate = useNavigate();
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl">
@@ -66,12 +68,15 @@ const AdminPlatformAnalytics = () => {
           </p>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
+        <div 
+          onClick={() => navigate('/dashboard-area/kyc-management')}
+          className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700 cursor-pointer hover:shadow-md transition-shadow group"
+        >
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400">
+            <h3 className="text-sm font-medium text-gray-600 dark:text-gray-400 group-hover:text-blue-500 transition-colors">
               KYC Pending
             </h3>
-            <AlertCircle className="text-red-500" size={24} />
+            <AlertCircle className="text-red-500 group-hover:scale-110 transition-transform" size={24} />
           </div>
           <p className="text-2xl font-bold text-gray-900 dark:text-white">12</p>
           <p className="text-sm text-red-600 dark:text-red-400 mt-2">

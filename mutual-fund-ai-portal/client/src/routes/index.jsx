@@ -1,6 +1,17 @@
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import DashboardLayout from '../layouts/DashboardLayout';
 import ProtectedRoute from './ProtectedRoute';
+import useAuthStore from '../store/useAuthStore';
+
+// Simple component to handle index redirect based on role
+const IndexRedirect = () => {
+  const { isAuthenticated, role } = useAuthStore();
+  
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  
+  if (role === 'admin') return <Navigate to="/dashboard-area/analytics" replace />;
+  return <Navigate to="/dashboard-area/explore" replace />;
+};
 
 // Public page imports
 import Landing from '../pages/Landing';
@@ -148,7 +159,7 @@ const router = createBrowserRouter([
       {
         path: 'analytics',
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute requiredRole="admin">
             <AdminPlatformAnalytics />
           </ProtectedRoute>
         ),
@@ -156,7 +167,7 @@ const router = createBrowserRouter([
       {
         path: 'kyc-management',
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute requiredRole="admin">
             <KYCManagement />
           </ProtectedRoute>
         ),
@@ -164,7 +175,7 @@ const router = createBrowserRouter([
       {
         path: 'fund-master',
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute requiredRole="admin">
             <FundMaster />
           </ProtectedRoute>
         ),
@@ -172,7 +183,7 @@ const router = createBrowserRouter([
       {
         path: 'settings',
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute requiredRole="admin">
             <Settings />
           </ProtectedRoute>
         ),
@@ -180,20 +191,16 @@ const router = createBrowserRouter([
       {
         path: 'support',
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute requiredRole="admin">
             <AdminSupport />
           </ProtectedRoute>
         ),
       },
 
-      // Default redirect
+      // Default redirect based on role
       {
         index: true,
-        element: (
-          <ProtectedRoute>
-            <InvestorDashboard />
-          </ProtectedRoute>
-        ),
+        element: <IndexRedirect />,
       },
     ],
   },

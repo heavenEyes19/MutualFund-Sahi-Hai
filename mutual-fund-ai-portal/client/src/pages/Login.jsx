@@ -25,7 +25,7 @@ export default function Login() {
         return "/dashboard-area/analytics";
       case "investor":
       default:
-        return "/dashboard-area/dashboard";
+        return "/dashboard-area/explore";
     }
   };
 

@@ -41,11 +41,15 @@ const KYCManagement = () => {
     }
   };
 
-  const filteredKycs = kycs.filter((kyc) =>
-    kyc.userId?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    kyc.aadharNumber.includes(searchTerm) ||
-    kyc.panNumber.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredKycs = kycs.filter((kyc) => {
+    const search = searchTerm.toLowerCase();
+    const name = kyc.userId?.name?.toLowerCase() || 'unknown user';
+    const email = kyc.userId?.email?.toLowerCase() || '';
+    const aadhar = kyc.aadharNumber || '';
+    const pan = kyc.panNumber?.toLowerCase() || '';
+    
+    return name.includes(search) || email.includes(search) || aadhar.includes(search) || pan.includes(search);
+  });
 
   const getStatusBadge = (status) => {
     switch (status) {

@@ -35,12 +35,22 @@ export default function Navbar({ isDarkMode, onDarkModeToggle }) {
     navigate('/login');
   };
 
-  const tabs = [
+  const investorTabs = [
     { name: 'Explore', path: '/dashboard-area/explore' },
     { name: 'Portfolio', path: '/dashboard-area/portfolio' },
     { name: 'SIPs', path: '/dashboard-area/sips' },
     { name: 'Help & Support', path: '/dashboard-area/support' },
   ];
+
+  const adminTabs = [
+    { name: 'Analytics', path: '/dashboard-area/analytics' },
+    { name: 'KYC Management', path: '/dashboard-area/kyc-management' },
+    { name: 'Fund Master', path: '/dashboard-area/fund-master' },
+    { name: 'Support', path: '/dashboard-area/support' },
+    { name: 'Settings', path: '/dashboard-area/settings' },
+  ];
+
+  const tabs = user?.role === 'admin' ? adminTabs : investorTabs;
 
   const getTabClass = (path) => {
     const isActive = location.pathname.includes(path);
@@ -58,7 +68,7 @@ export default function Navbar({ isDarkMode, onDarkModeToggle }) {
           
           {/* Logo Area */}
           <div 
-            onClick={() => navigate('/dashboard-area/explore')}
+            onClick={() => navigate(user?.role === 'admin' ? '/dashboard-area/analytics' : '/dashboard-area/explore')}
             className="flex items-center gap-4 cursor-pointer group"
           >
             {/* Minimalist Logo Icon */}
@@ -123,16 +133,18 @@ export default function Navbar({ isDarkMode, onDarkModeToggle }) {
               )}
             </div>
 
-            {/* Cart */}
-            <button 
-              onClick={() => navigate('/dashboard-area/cart')}
-              className="relative w-11 h-11 rounded-xl bg-[#EFEDEA] dark:bg-[#1A1A1A] hover:bg-[#E5E3E0] dark:hover:bg-[#222] flex items-center justify-center transition-colors border border-transparent"
-            >
-              <ShoppingCart size={20} className="text-[#555] dark:text-[#CCC]" />
-              <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[#D86F45] rounded-full flex items-center justify-center text-[10px] font-bold text-white border-2 border-[#FAFAF7] dark:border-[#111111]">
-                1
-              </div>
-            </button>
+            {/* Cart - Hidden for Admins */}
+            {user?.role !== 'admin' && (
+              <button 
+                onClick={() => navigate('/dashboard-area/cart')}
+                className="relative w-11 h-11 rounded-xl bg-[#EFEDEA] dark:bg-[#1A1A1A] hover:bg-[#E5E3E0] dark:hover:bg-[#222] flex items-center justify-center transition-colors border border-transparent"
+              >
+                <ShoppingCart size={20} className="text-[#555] dark:text-[#CCC]" />
+                <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[#D86F45] rounded-full flex items-center justify-center text-[10px] font-bold text-white border-2 border-[#FAFAF7] dark:border-[#111111]">
+                  1
+                </div>
+              </button>
+            )}
 
             {/* Profile Avatar */}
             <button className="w-11 h-11 rounded-full bg-[#4A7D69] border-2 border-white dark:border-[#111] shadow-sm flex items-center justify-center text-white font-bold text-sm ml-1 transition-transform hover:scale-105">
@@ -174,10 +186,13 @@ export default function Navbar({ isDarkMode, onDarkModeToggle }) {
                   </button>
 
                   <button 
-                    onClick={() => { setIsMenuOpen(false); navigate('/dashboard-area/kyc'); }}
+                    onClick={() => { 
+                      setIsMenuOpen(false); 
+                      navigate(user?.role === 'admin' ? '/dashboard-area/kyc-management' : '/dashboard-area/kyc'); 
+                    }}
                     className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[#555] dark:text-[#CCC] hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A] rounded-xl transition-colors"
                   >
-                    <FileCheck size={16} /> KYC
+                    <FileCheck size={16} /> {user?.role === 'admin' ? 'KYC Management' : 'KYC Status'}
                   </button>
 
                   <div className="h-px bg-[#EAE7DF] dark:bg-[#222] my-1" />
