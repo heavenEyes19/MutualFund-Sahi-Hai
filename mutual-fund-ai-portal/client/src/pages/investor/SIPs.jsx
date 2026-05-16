@@ -3,16 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import API from '../../services/api';
 import { Play, Pause, Plus, Calendar, TrendingUp, IndianRupee, Clock, Calculator, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-hot-toast';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import KycGuard from '../../components/layout/KycGuard';
 import { useKycStatus } from '../../hooks/useKycStatus';
+import useDarkMode from '../../hooks/useDarkMode';
+import useNotificationStore from '../../store/useNotificationStore';
 
 const SIPs = () => {
   const [sips, setSips] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isDarkMode] = useDarkMode();
   const { kycStatus, kycRejectionReason, loading: kycLoading } = useKycStatus();
   const navigate = useNavigate();
+  const addNotification = useNotificationStore(state => state.addNotification);
 
   const [calcAmount, setCalcAmount] = useState(5000);
   const [calcFrequency, setCalcFrequency] = useState('Monthly');
@@ -37,9 +42,39 @@ const SIPs = () => {
     try {
       await API.post(`/sips/${id}/execute`, {});
       fetchSIPs();
-      alert('SIP Executed Successfully!');
+      const msg = 'Your SIP instalment has been executed successfully.';
+      toast.success(msg, { 
+        style: { 
+          borderRadius: '12px', 
+          background: isDarkMode ? '#1E293B' : '#fff', 
+          color: isDarkMode ? '#fff' : '#0f172a' 
+        } 
+      });
+      addNotification({
+        _id: `notif-${Date.now()}`,
+        title: 'SIP Executed',
+        message: msg,
+        type: 'sip',
+        read: false,
+        createdAt: new Date().toISOString(),
+      });
     } catch (err) {
-      alert(err.response?.data?.message || 'Error executing SIP');
+      const errMsg = err.response?.data?.message || 'Error executing SIP. Please try again.';
+      toast.error(errMsg, { 
+        style: { 
+          borderRadius: '12px', 
+          background: isDarkMode ? '#1E293B' : '#fff', 
+          color: isDarkMode ? '#fff' : '#0f172a' 
+        } 
+      });
+      addNotification({
+        _id: `notif-${Date.now()}`,
+        title: 'SIP Execution Failed',
+        message: errMsg,
+        type: 'error',
+        read: false,
+        createdAt: new Date().toISOString(),
+      });
     }
   };
 
@@ -48,8 +83,30 @@ const SIPs = () => {
       const newStatus = currentStatus === 'ACTIVE' ? 'PAUSED' : 'ACTIVE';
       await API.put(`/sips/${id}`, { status: newStatus });
       fetchSIPs();
+      toast.success(`SIP ${newStatus.toLowerCase()} successfully`, { 
+        style: { 
+          borderRadius: '12px', 
+          background: isDarkMode ? '#1E293B' : '#fff', 
+          color: isDarkMode ? '#fff' : '#0f172a' 
+        } 
+      });
     } catch {
-      alert('Error updating status');
+      const errMsg = 'Could not update SIP status. Please try again.';
+      toast.error(errMsg, { 
+        style: { 
+          borderRadius: '12px', 
+          background: isDarkMode ? '#1E293B' : '#fff', 
+          color: isDarkMode ? '#fff' : '#0f172a' 
+        } 
+      });
+      addNotification({
+        _id: `notif-${Date.now()}`,
+        title: 'Update Failed',
+        message: errMsg,
+        type: 'error',
+        read: false,
+        createdAt: new Date().toISOString(),
+      });
     }
   };
 

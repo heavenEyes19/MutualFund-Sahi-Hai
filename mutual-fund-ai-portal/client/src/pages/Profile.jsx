@@ -63,19 +63,43 @@ export default function Profile() {
     }
   };
 
-  const handleSetMpin = async (e) => {
-    e.preventDefault();
-    if (mpinForm.newMpin !== mpinForm.confirmMpin) return toast.error("PINs do not match");
+  const [mpinStep, setMpinStep] = useState('idle'); // idle | request-otp | enter-otp | set-mpin
+  const [mpinOtp, setMpinOtp] = useState('');
+  const [mpinNew, setMpinNew] = useState('');
+  const [mpinConfirm, setMpinConfirm] = useState('');
+
+  const handleRequestMpinOtp = async () => {
     setIsSaving(true);
     try {
-      const endpoint = user.isMpinSet ? "/users/change-mpin" : "/users/set-mpin";
-      const payload = user.isMpinSet ? { oldMpin: mpinForm.oldMpin, newMpin: mpinForm.newMpin } : { mpin: mpinForm.newMpin };
-      await API.post(endpoint, payload);
-      toast.success("MPIN updated successfully");
-      setMpinForm({ oldMpin: "", newMpin: "", confirmMpin: "" });
+      await API.post('/users/request-mpin-otp');
+      toast.success('OTP sent to your registered email!');
+      setMpinStep('enter-otp');
+      setMpinOtp(''); setMpinNew(''); setMpinConfirm('');
+    } catch (err) {
+      toast.error(err.response?.data?.msg || 'Failed to send OTP');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleVerifyOtpStep = () => {
+    if (mpinOtp.length < 6) { toast.error('Enter the 6-digit OTP'); return; }
+    setMpinStep('set-mpin');
+  };
+
+  const handleSetMpinViaOtp = async (e) => {
+    e.preventDefault();
+    if (mpinNew.length < 4) { toast.error('MPIN must be at least 4 digits'); return; }
+    if (mpinNew !== mpinConfirm) { toast.error('MPINs do not match'); return; }
+    setIsSaving(true);
+    try {
+      await API.post('/users/set-mpin-via-otp', { otp: mpinOtp, newMpin: mpinNew, confirmMpin: mpinConfirm });
+      toast.success('MPIN set successfully!');
+      setMpinStep('idle');
+      setMpinOtp(''); setMpinNew(''); setMpinConfirm('');
       fetchProfile();
     } catch (err) {
-      toast.error(err.response?.data?.msg || "MPIN update failed");
+      toast.error(err.response?.data?.msg || 'Failed to set MPIN');
     } finally {
       setIsSaving(false);
     }
@@ -190,12 +214,13 @@ export default function Profile() {
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Linked Banks</p>
                     <p className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter">{user?.bankAccounts?.length ?? 0} Accounts</p>
                  </div>
-                 <div className="ui-card p-6 dark:bg-slate-900/40">
+                 <div className="ui-card p-6 dark:bg-slate-900/40 cursor-pointer hover:border-indigo-500/30 transition-all" onClick={() => { setActiveTab(TABS.SECURITY); setMpinStep('idle'); }}>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Security Level</p>
                     <div className="flex items-center gap-2">
                       <ShieldCheck size={20} className={user?.isMpinSet ? "text-emerald-500" : "text-amber-500"} />
                       <p className="text-sm font-bold text-slate-700 dark:text-slate-300">{user?.isMpinSet ? "MPIN Active" : "MPIN Not Set"}</p>
                     </div>
+                    {!user?.isMpinSet && <p className="text-[10px] text-amber-500 font-bold mt-2 uppercase tracking-widest">Tap to set MPIN →</p>}
                  </div>
               </div>
             </motion.div>
@@ -271,52 +296,110 @@ export default function Profile() {
               <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight mb-2 flex items-center gap-2">
                 <Key size={20} className="text-indigo-500" /> Security Protocol
               </h3>
-              <p className="text-xs font-medium text-slate-500 mb-8">Manage your MPIN for fast transaction authorization.</p>
+              <p className="text-xs font-medium text-slate-500 mb-8">Your 4-digit MPIN secures all wallet transactions. Changing it always requires email OTP verification.</p>
 
-              <form onSubmit={handleSetMpin} className="space-y-6">
-                {user.isMpinSet && (
-                  <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Old MPIN</label>
-                    <input
-                      type="password"
-                      maxLength={6}
-                      value={mpinForm.oldMpin}
-                      onChange={(e) => setMpinForm({...mpinForm, oldMpin: e.target.value.replace(/\D/g, '')})}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20"
-                    />
-                  </div>
-                )}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">New MPIN</label>
-                    <input
-                      type="password"
-                      maxLength={6}
-                      value={mpinForm.newMpin}
-                      onChange={(e) => setMpinForm({...mpinForm, newMpin: e.target.value.replace(/\D/g, '')})}
-                      placeholder="4-6 digits"
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Confirm MPIN</label>
-                    <input
-                      type="password"
-                      maxLength={6}
-                      value={mpinForm.confirmMpin}
-                      onChange={(e) => setMpinForm({...mpinForm, confirmMpin: e.target.value.replace(/\D/g, '')})}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20"
-                    />
-                  </div>
+              {/* Status card */}
+              <div className={`flex items-center gap-4 p-4 rounded-2xl border mb-8 ${user.isMpinSet ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20' : 'bg-amber-50 dark:bg-amber-500/10 border-amber-100 dark:border-amber-500/20'}`}>
+                <ShieldCheck size={24} className={user.isMpinSet ? 'text-emerald-500' : 'text-amber-500'} />
+                <div className="flex-1">
+                  <p className="text-sm font-black text-slate-900 dark:text-white">{user.isMpinSet ? 'MPIN Active' : 'MPIN Not Set'}</p>
+                  <p className="text-[10px] text-slate-500">{user.isMpinSet ? 'Your transactions are protected by MPIN.' : 'Set an MPIN to enable quick transaction confirmation.'}</p>
                 </div>
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-xs uppercase tracking-[0.2em] rounded-xl hover:-translate-y-0.5 active:scale-95 transition-all disabled:opacity-50"
-                >
-                  {user.isMpinSet ? "Update MPIN" : "Generate MPIN"}
-                </button>
-              </form>
+              </div>
+
+              {/* Step: idle */}
+              {mpinStep === 'idle' && (
+                <div className="space-y-4">
+                  <button
+                    onClick={handleRequestMpinOtp}
+                    disabled={isSaving}
+                    className="w-full py-4 bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-xl shadow-xl shadow-indigo-500/20 hover:-translate-y-0.5 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Key size={18} />}
+                    {user.isMpinSet ? 'Change MPIN via Email OTP' : 'Set MPIN via Email OTP'}
+                  </button>
+                  {user.isMpinSet && (
+                    <button
+                      onClick={handleRequestMpinOtp}
+                      disabled={isSaving}
+                      className="w-full py-3 text-indigo-500 font-bold text-xs uppercase tracking-widest hover:text-indigo-600 transition-colors"
+                    >
+                      Forgot MPIN? Reset via Email OTP
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Step: enter-otp */}
+              {mpinStep === 'enter-otp' && (
+                <div className="space-y-6">
+                  <p className="text-sm text-slate-600 dark:text-slate-400">Check your email inbox for the 6-digit OTP we sent you.</p>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Email OTP</label>
+                    <input
+                      type="text"
+                      maxLength={6}
+                      value={mpinOtp}
+                      onChange={(e) => setMpinOtp(e.target.value.replace(/\D/g, ''))}
+                      placeholder="••••••"
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl px-4 py-3 text-center text-2xl font-mono tracking-[0.5em] text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <button onClick={() => setMpinStep('idle')} className="flex-1 py-3 text-slate-500 text-sm font-bold bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">Cancel</button>
+                    <button
+                      onClick={handleVerifyOtpStep}
+                      disabled={mpinOtp.length < 6}
+                      className="flex-1 py-3 bg-indigo-600 text-white font-black text-xs uppercase tracking-widest rounded-xl disabled:opacity-50 transition-colors"
+                    >
+                      Verify OTP
+                    </button>
+                  </div>
+                  <button onClick={handleRequestMpinOtp} disabled={isSaving} className="w-full text-center text-xs text-indigo-400 hover:text-indigo-300 transition-colors">
+                    Resend OTP
+                  </button>
+                </div>
+              )}
+
+              {/* Step: set-mpin */}
+              {mpinStep === 'set-mpin' && (
+                <form onSubmit={handleSetMpinViaOtp} className="space-y-6">
+                  <p className="text-sm text-emerald-600 dark:text-emerald-400 font-bold">✓ OTP verified! Now create your new 4-digit MPIN.</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">New MPIN</label>
+                      <input
+                        type="password"
+                        maxLength={4}
+                        value={mpinNew}
+                        onChange={(e) => setMpinNew(e.target.value.replace(/\D/g, ''))}
+                        placeholder="4-6 digits"
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        autoFocus
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Confirm MPIN</label>
+                      <input
+                        type="password"
+                        maxLength={4}
+                        value={mpinConfirm}
+                        onChange={(e) => setMpinConfirm(e.target.value.replace(/\D/g, ''))}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={isSaving || mpinNew.length < 4 || mpinConfirm.length < 4}
+                    className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-xs uppercase tracking-[0.2em] rounded-xl hover:-translate-y-0.5 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                    Set MPIN &amp; Save
+                  </button>
+                </form>
+              )}
             </motion.div>
           )}
 

@@ -7,7 +7,11 @@ import { TrendingUp, TrendingDown, PlusCircle, MinusCircle, Wallet, Activity, Ba
 import { motion, AnimatePresence } from 'framer-motion';
 import KycGuard from '../../components/layout/KycGuard';
 import { useKycStatus } from '../../hooks/useKycStatus';
+import useDarkMode from '../../hooks/useDarkMode';
 import { sellFund } from '../../services/portfolio';
+import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import { toast } from 'react-hot-toast';
+import useNotificationStore from '../../store/useNotificationStore';
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6'];
 
@@ -32,7 +36,9 @@ const Portfolio = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isDarkMode] = useDarkMode();
   const { kycStatus, kycRejectionReason, loading: kycLoading } = useKycStatus();
+  const addNotification = useNotificationStore(state => state.addNotification);
 
   const fetchPortfolio = async () => {
     try {
@@ -46,16 +52,41 @@ const Portfolio = () => {
   };
 
   const [sellingFundId, setSellingFundId] = useState(null);
+  const [confirmSell, setConfirmSell] = useState(null); // fund object to sell
 
-  const handleSellAll = async (fund) => {
-    if (!fund.currentNav) { alert("Cannot sell: Current NAV is unavailable."); return; }
-    if (!window.confirm(`Are you sure you want to sell all units of ${fund.schemeName}?`)) return;
+  const handleSellAll = (fund) => {
+    if (!fund.currentNav) {
+      toast.error('Cannot sell: Current NAV is unavailable.', {
+        style: { borderRadius: '12px', background: isDarkMode ? '#1E293B' : '#fff', color: isDarkMode ? '#fff' : '#0f172a' }
+      });
+      return;
+    }
+    setConfirmSell(fund);
+  };
+
+  const executeSell = async () => {
+    const fund = confirmSell;
+    setConfirmSell(null);
     setSellingFundId(fund.schemeCode);
     try {
       await sellFund({ schemeCode: fund.schemeCode, schemeName: fund.schemeName, amount: fund.currentValue, nav: fund.currentNav, unitsToSell: fund.units, currentNav: fund.currentNav });
+      const msg = `${fund.schemeName} sold successfully! Proceeds credited to wallet.`;
+      toast.success(msg, {
+        style: { borderRadius: '12px', background: isDarkMode ? '#1E293B' : '#fff', color: isDarkMode ? '#fff' : '#0f172a' }
+      });
+      addNotification({
+        _id: `notif-${Date.now()}`,
+        title: 'Mutual Fund Sold',
+        message: msg,
+        type: 'success',
+        read: false,
+        createdAt: new Date().toISOString(),
+      });
       fetchPortfolio();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to sell fund.');
+      toast.error(err.response?.data?.message || 'Failed to sell fund.', {
+        style: { borderRadius: '12px', background: isDarkMode ? '#1E293B' : '#fff', color: isDarkMode ? '#fff' : '#0f172a' }
+      });
     } finally {
       setSellingFundId(null);
     }
@@ -295,6 +326,18 @@ const Portfolio = () => {
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={!!confirmSell}
+        onClose={() => setConfirmSell(null)}
+        onConfirm={executeSell}
+        title="Sell All Units?"
+        message={confirmSell ? `Sell all ${confirmSell.units.toFixed(3)} units of "${confirmSell.schemeName}" at ₹${confirmSell.currentNav?.toFixed(2)} NAV? Proceeds of ₹${confirmSell.currentValue?.toLocaleString('en-IN')} will be credited to your wallet.` : ''}
+        confirmLabel="Sell All"
+        cancelLabel="Keep Holding"
+        variant="danger"
+        isLoading={!!sellingFundId}
+      />
     </KycGuard>
   );
 };

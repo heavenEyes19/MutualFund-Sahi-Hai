@@ -3,8 +3,6 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import User from "../models/User.js";
 import WalletTransaction from "../models/WalletTransaction.js";
-import OTP from "../models/OTP.js";
-import sendEmail from "../utils/sendEmail.js";
 import { sendNotification } from "../utils/notificationService.js";
 
 const getRazorpayInstance = () => {
@@ -114,89 +112,66 @@ export const getWalletDetails = async (req, res) => {
   }
 };
 
-// Initiate withdraw
+// Initiate withdraw — validate balance, return isMpinSet
 export const initiateWithdraw = async (req, res) => {
   try {
     const { amount, bankAccount } = req.body;
     const userId = req.user.id;
 
+    if (!amount || isNaN(amount) || amount <= 0) {
+      return res.status(400).json({ message: "Invalid amount" });
+    }
+
     const user = await User.findById(userId);
     if (user.walletBalance < amount) {
       return res.status(400).json({ message: "Insufficient balance" });
     }
 
-    // Generate 6 digit OTP
-    const otp = crypto.randomInt(100000, 999999).toString();
-    const salt = await bcrypt.genSalt(10);
-    const otpHash = await bcrypt.hash(otp, salt);
-
-    // Delete any existing OTPs for this action
-    await OTP.deleteMany({ email: user.email, action: "WITHDRAWAL" });
-
-    // Save OTP
-    await OTP.create({
-      email: user.email,
-      otpHash,
-      action: "WITHDRAWAL",
-      metadata: { amount, bankAccount },
+    res.json({
+      message: "Proceed with MPIN verification",
+      isMpinSet: !!user.mpin,
+      amount,
+      bankAccount,
     });
-
-    // Send email
-    await sendEmail({
-      email: user.email,
-      subject: "OTP for Withdrawal",
-      message: `Your OTP for withdrawing ₹${amount} is ${otp}. It is valid for 5 minutes.`,
-    });
-
-    res.json({ message: "OTP sent to your email" });
-
   } catch (error) {
     res.status(500).json({ message: error.message || "Server error" });
   }
 };
 
-// Verify withdraw
+// Verify MPIN and process withdrawal
 export const verifyWithdraw = async (req, res) => {
   try {
-    const { otp } = req.body;
+    const { mpin, amount, bankAccount } = req.body;
     const userId = req.user.id;
     const user = await User.findById(userId);
 
-    const otpRecord = await OTP.findOne({ email: user.email, action: "WITHDRAWAL" }).sort({ createdAt: -1 });
-    if (!otpRecord) {
-      return res.status(400).json({ message: "OTP expired or invalid" });
+    if (!user.mpin) {
+      return res.status(400).json({ message: "MPIN not set. Please set your MPIN first." });
     }
 
-    const isMatch = await bcrypt.compare(otp.toString(), otpRecord.otpHash);
+    const isMatch = await bcrypt.compare(mpin.toString(), user.mpin);
     if (!isMatch) {
-      return res.status(400).json({ message: "Incorrect OTP" });
+      return res.status(400).json({ message: "Incorrect MPIN" });
     }
-
-    const { amount, bankAccount } = otpRecord.metadata;
 
     if (user.walletBalance < amount) {
       return res.status(400).json({ message: "Insufficient balance" });
     }
 
-    // Deduct balance
     user.walletBalance -= amount;
     await user.save();
 
-    // Trigger Razorpay X payout (mocked here)
-    const mockPayoutId = `pout_${Math.floor(Math.random() * 1000000)}`;
+    const mockPayoutId = `pout_${crypto.randomInt(100000, 999999)}`;
 
     const newTx = new WalletTransaction({
       user: userId,
       type: "WITHDRAWAL",
-      amount: amount,
+      amount,
       status: "COMPLETED",
-      description: `Withdrawal to Bank Account (${bankAccount || 'Saved'})`,
+      description: `Withdrawal to Bank Account${bankAccount ? ` (${bankAccount})` : ''}`,
       razorpayPayoutId: mockPayoutId,
     });
     await newTx.save();
-
-    // Delete used OTP
-    await OTP.deleteOne({ _id: otpRecord._id });
 
     await sendNotification({
       req,
@@ -208,8 +183,7 @@ export const verifyWithdraw = async (req, res) => {
     });
 
     res.json({ message: "Withdrawal processed successfully", balance: user.walletBalance });
-
   } catch (error) {
-    res.status(500).json({ message: error.message || "Failed to verify withdrawal" });
+    res.status(500).json({ message: error.message || "Failed to process withdrawal" });
   }
 };

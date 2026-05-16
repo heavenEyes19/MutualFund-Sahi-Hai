@@ -50,38 +50,74 @@ router.post("/update-profile", protect, async (req, res) => {
   }
 });
 
-// Set MPIN (Generation)
-router.post("/set-mpin", protect, async (req, res) => {
-  const { mpin } = req.body;
-  if (!mpin || mpin.length < 4) return res.status(400).json({ msg: "Invalid MPIN" });
-  
+// Request OTP for MPIN setup/reset (Forgot MPIN)
+router.post("/request-mpin-otp", protect, async (req, res) => {
+  try {
+    const crypto = await import("crypto");
+    const sendEmail = (await import("../utils/sendEmail.js")).default;
+    const user = await User.findById(req.user._id);
+
+    const otp = crypto.default.randomInt(100000, 999999).toString();
+    const salt = await bcrypt.genSalt(10);
+    const otpHash = await bcrypt.hash(otp, salt);
+
+    // Store OTP directly on user record (reusing existing otp/otpExpires fields)
+    user.otp = otpHash;
+    user.otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+    await user.save();
+
+    await sendEmail({
+      email: user.email,
+      subject: "OTP for MPIN Setup",
+      message: `Your OTP for setting/resetting your MPIN is ${otp}. It is valid for 5 minutes. Do not share this with anyone.`,
+    });
+
+    res.json({ msg: "OTP sent to your registered email" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ msg: "Error sending OTP" });
+  }
+});
+
+// Verify OTP and set new MPIN
+router.post("/set-mpin-via-otp", protect, async (req, res) => {
+  const { otp, newMpin, confirmMpin } = req.body;
+  if (!otp || !newMpin || newMpin.length < 4) return res.status(400).json({ msg: "Invalid request" });
+  if (newMpin !== confirmMpin) return res.status(400).json({ msg: "MPINs do not match" });
+
   try {
     const user = await User.findById(req.user._id);
+
+    if (!user.otp || !user.otpExpires || user.otpExpires < new Date()) {
+      return res.status(400).json({ msg: "OTP expired or not requested" });
+    }
+
+    const isMatch = await bcrypt.compare(otp.toString(), user.otp);
+    if (!isMatch) return res.status(400).json({ msg: "Incorrect OTP" });
+
     const salt = await bcrypt.genSalt(10);
-    user.mpin = await bcrypt.hash(mpin, salt);
+    user.mpin = await bcrypt.hash(newMpin, salt);
+    user.otp = null;
+    user.otpExpires = null;
     await user.save();
+
     res.json({ msg: "MPIN set successfully" });
   } catch (err) {
     res.status(500).json({ msg: "Error setting MPIN" });
   }
 });
 
-// Change MPIN
-router.post("/change-mpin", protect, async (req, res) => {
-  const { oldMpin, newMpin } = req.body;
+// Verify MPIN (for quick check)
+router.post("/verify-mpin", protect, async (req, res) => {
+  const { mpin } = req.body;
   try {
     const user = await User.findById(req.user._id);
     if (!user.mpin) return res.status(400).json({ msg: "MPIN not set" });
-    
-    const isMatch = await bcrypt.compare(oldMpin, user.mpin);
-    if (!isMatch) return res.status(400).json({ msg: "Invalid old MPIN" });
-
-    const salt = await bcrypt.genSalt(10);
-    user.mpin = await bcrypt.hash(newMpin, salt);
-    await user.save();
-    res.json({ msg: "MPIN changed successfully" });
+    const isMatch = await bcrypt.compare(mpin.toString(), user.mpin);
+    if (!isMatch) return res.status(400).json({ msg: "Incorrect MPIN" });
+    res.json({ msg: "MPIN verified" });
   } catch (err) {
-    res.status(500).json({ msg: "Error changing MPIN" });
+    res.status(500).json({ msg: "Error verifying MPIN" });
   }
 });
 

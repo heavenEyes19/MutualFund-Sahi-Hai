@@ -5,16 +5,24 @@ import useCartStore from '../../store/useCartStore';
 import { createSIP } from '../../services/portfolio';
 import API from '../../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-hot-toast';
+import useDarkMode from '../../hooks/useDarkMode';
+import useNotificationStore from '../../store/useNotificationStore';
+import MpinModal from '../../components/wallet/MpinModal';
 
 export default function Cart() {
   const navigate = useNavigate();
+  const [isDarkMode] = useDarkMode();
   const { cartItems, removeFromCart, clearCart, getTotalCost } = useCartStore();
+  const addNotification = useNotificationStore(state => state.addNotification);
   
   const [txLoading, setTxLoading] = useState(false);
   const [txMessage, setTxMessage] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [showOtpModal, setShowOtpModal] = useState(false);
-  const [otp, setOtp] = useState('');
+  const [showMpin, setShowMpin] = useState(false);
+  const [mpinLoading, setMpinLoading] = useState(false);
+  const [mpinError, setMpinError] = useState('');
+  const [isMpinSet, setIsMpinSet] = useState(true);
   const [pendingItems, setPendingItems] = useState([]);
 
   const handleBuySingle = async (item) => {
@@ -33,7 +41,6 @@ export default function Cart() {
       const sipItems = items.filter(i => i.type === 'SIP');
       const lumpsumItems = items.filter(i => i.type === 'LUMPSUM');
 
-      // Process SIPs sequentially
       for (const sip of sipItems) {
         await createSIP({
           schemeCode: Number(sip.schemeCode),
@@ -45,11 +52,9 @@ export default function Cart() {
         });
       }
 
-      // Process Lumpsum with Wallet OTP
       if (lumpsumItems.length > 0) {
         const totalLumpsumAmount = lumpsumItems.reduce((acc, i) => acc + Number(i.amount), 0);
-        
-        await API.post('/payment/create-order', {
+        const res = await API.post('/payment/create-order', {
           amount: totalLumpsumAmount,
           items: lumpsumItems.map(item => ({
             schemeCode: item.schemeCode,
@@ -58,60 +63,72 @@ export default function Cart() {
             nav: item.nav
           }))
         });
-
         setPendingItems(lumpsumItems);
-        setShowOtpModal(true);
+        setIsMpinSet(res.data.isMpinSet);
+        setMpinError('');
         setTxLoading(false);
-        return; 
+        setShowMpin(true);
+        return;
       }
 
       setTxMessage({ type: 'success', text: 'Deployment Successful!' });
+      const successMsg = 'Investment Deployment Successful!';
+      toast.success(successMsg, {
+        style: { borderRadius: '12px', background: isDarkMode ? '#1E293B' : '#fff', color: isDarkMode ? '#fff' : '#0f172a' }
+      });
+      addNotification({
+        _id: `notif-${Date.now()}`,
+        title: 'Deployment Successful',
+        message: 'Your mutual fund orders have been processed and deployed.',
+        type: 'success',
+        read: false,
+        createdAt: new Date().toISOString(),
+      });
       items.forEach(i => removeFromCart(i.schemeCode));
       setShowSuccessModal(true);
     } catch (err) {
+      const errMsg = err.response?.data?.message || 'Failed to process deployment.';
       if (err.response?.data?.message?.toLowerCase().includes("insufficient wallet balance")) {
         setTxMessage({ type: 'error', text: "Insufficient balance. Please top up your wallet." });
+        toast.error("Insufficient balance.", {
+          style: { borderRadius: '12px', background: isDarkMode ? '#1E293B' : '#fff', color: isDarkMode ? '#fff' : '#0f172a' }
+        });
       } else {
-        setTxMessage({ type: 'error', text: err.response?.data?.message || 'Failed to process deployment.' });
+        setTxMessage({ type: 'error', text: errMsg });
+        toast.error(errMsg, {
+          style: { borderRadius: '12px', background: isDarkMode ? '#1E293B' : '#fff', color: isDarkMode ? '#fff' : '#0f172a' }
+        });
       }
     } finally {
       setTxLoading(false);
     }
   };
 
-  const handleVerifyOtp = async () => {
-    setTxLoading(true);
-    setTxMessage(null);
+  const handleMpinVerified = async (mpin) => {
+    setMpinLoading(true); setMpinError('');
     try {
-      await API.post('/payment/verify-payment', { otp });
-      setShowOtpModal(false);
-      setOtp('');
+      const totalAmount = pendingItems.reduce((acc, i) => acc + Number(i.amount), 0);
+      await API.post('/payment/verify-payment', { mpin, items: pendingItems, totalAmount });
+      setShowMpin(false);
       setTxMessage({ type: 'success', text: 'Deployment Successful!' });
+      const msg = 'Payment Verified! Orders placed.';
+      toast.success(msg, {
+        style: { borderRadius: '12px', background: isDarkMode ? '#1E293B' : '#fff', color: isDarkMode ? '#fff' : '#0f172a' }
+      });
+      addNotification({
+        _id: `notif-${Date.now()}`,
+        title: 'Deployment Successful',
+        message: 'Your mutual fund orders have been processed and deployed.',
+        type: 'success',
+        read: false,
+        createdAt: new Date().toISOString(),
+      });
       pendingItems.forEach(i => removeFromCart(i.schemeCode));
       setShowSuccessModal(true);
     } catch (err) {
-      setTxMessage({ type: 'error', text: err.response?.data?.message || 'Failed to verify OTP.' });
+      setMpinError(err.response?.data?.message || 'Verification failed');
     } finally {
-      setTxLoading(false);
-    }
-  };
-
-  const handleResendOtp = async () => {
-    try {
-      setTxMessage(null);
-      const totalLumpsumAmount = pendingItems.reduce((acc, i) => acc + Number(i.amount), 0);
-      await API.post('/payment/create-order', {
-        amount: totalLumpsumAmount,
-        items: pendingItems.map(item => ({
-          schemeCode: item.schemeCode,
-          schemeName: item.schemeName,
-          amount: item.amount,
-          nav: item.nav
-        }))
-      });
-      setTxMessage({ type: 'success', text: 'OTP resent to your email!' });
-    } catch (err) {
-      setTxMessage({ type: 'error', text: err.response?.data?.message || 'Failed to resend OTP.' });
+      setMpinLoading(false);
     }
   };
 
@@ -136,16 +153,16 @@ export default function Cart() {
             </motion.div>
           </div>
           
-          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter mb-4">Empty Terminal</h1>
+          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter mb-4">Your Cart is Empty</h1>
           <p className="text-slate-500 dark:text-slate-400 font-medium mb-10 leading-relaxed">
-            Your investment cart is empty. Leverage our neural networks to discover high-yield opportunities.
+            You haven't added any mutual funds to your cart yet. Explore our curated list of funds to get started.
           </p>
           
           <button 
-            onClick={() => navigate('/dashboard-area/explore')}
+            onClick={() => navigate('/dashboard-area/mutual-funds')}
             className="w-full py-4 bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-indigo-500/20 hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
           >
-            Launch AI Discovery <ArrowRight size={16} />
+            Explore Mutual Funds <ArrowRight size={16} />
           </button>
         </motion.div>
       </div>
@@ -216,7 +233,21 @@ export default function Cart() {
                       </button>
                       <button
                         disabled={txLoading}
-                        onClick={() => removeFromCart(item.schemeCode)}
+                        onClick={() => {
+                          removeFromCart(item.schemeCode);
+                          const msg = `${item.schemeName} removed from cart`;
+                          toast.success(msg, {
+                            style: { borderRadius: '12px', background: isDarkMode ? '#1E293B' : '#fff', color: isDarkMode ? '#fff' : '#0f172a' }
+                          });
+                          addNotification({
+                            _id: `notif-${Date.now()}`,
+                            title: 'Removed from Cart',
+                            message: msg,
+                            type: 'info',
+                            read: false,
+                            createdAt: new Date().toISOString(),
+                          });
+                        }}
                         className="w-12 h-12 flex items-center justify-center text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-all border border-transparent hover:border-rose-100 dark:hover:border-rose-500/20"
                       >
                         <Trash2 size={20} />
@@ -286,73 +317,49 @@ export default function Cart() {
       <AnimatePresence>
         {showSuccessModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{opacity: 0}} animate={{opacity: 1}} className="absolute inset-0 bg-slate-950/90 backdrop-blur-xl" />
-            <motion.div initial={{scale: 0.9, opacity: 0}} animate={{scale: 1, opacity: 1}} className="relative bg-white dark:bg-slate-900 rounded-[40px] p-12 text-center max-w-sm shadow-2xl">
-              <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg shadow-emerald-500/40">
-                <CheckCircle2 size={40} className="text-white" />
+            <motion.div initial={{opacity: 0}} animate={{opacity: 1}} className="absolute inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-md" />
+            <motion.div
+              initial={{scale: 0.9, opacity: 0, y: 8}}
+              animate={{scale: 1, opacity: 1, y: 0}}
+              transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+              className="relative ui-card w-full max-w-sm p-10 text-center"
+            >
+              <div className="w-20 h-20 bg-emerald-50 dark:bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <CheckCircle2 size={40} className="text-emerald-500 dark:text-emerald-400" />
               </div>
-              <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter mb-4">Capital Deployed</h3>
-              <p className="text-slate-500 dark:text-slate-400 font-medium mb-10 leading-relaxed text-sm">Your mutual fund orders have been successfully transmitted and are being processed.</p>
-              <button 
-                onClick={() => { setShowSuccessModal(false); navigate('/dashboard-area/portfolio'); }}
-                className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-xs uppercase tracking-[0.2em] rounded-2xl"
-              >
-                Go to Portfolio
-              </button>
-            </motion.div>
-          </div>
-        )}
-
-        {showOtpModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{opacity: 0}} animate={{opacity: 1}} className="absolute inset-0 bg-slate-950/90 backdrop-blur-xl" />
-            <motion.div initial={{scale: 0.9, opacity: 0}} animate={{scale: 1, opacity: 1}} className="relative bg-white dark:bg-slate-900 rounded-[30px] p-8 max-w-sm w-full shadow-2xl">
-              <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Verify Purchase</h3>
-              <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">Enter the 6-digit OTP sent to your email to confirm the debit from your wallet.</p>
-              
-              {txMessage && (
-                <div className={`p-3 rounded-lg text-xs font-bold mb-4 ${txMessage.type === 'error' ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                  {txMessage.text}
-                </div>
-              )}
-
-              <input 
-                type="text" 
-                maxLength="6"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                className="w-full bg-slate-100 dark:bg-slate-800 border border-transparent rounded-xl p-4 text-center text-2xl font-mono tracking-[0.5em] focus:outline-none focus:border-indigo-500 mb-4"
-                placeholder="••••••"
-              />
-
-              <div className="flex gap-3 mt-6">
-                <button 
-                  onClick={() => { setShowOtpModal(false); setOtp(''); setPendingItems([]); }}
-                  className="flex-1 py-3 text-slate-500 font-bold text-sm bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700"
+              <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mb-2">Order Successful</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-8 leading-relaxed">
+                Your mutual fund orders have been placed successfully.
+              </p>
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => { setShowSuccessModal(false); navigate('/dashboard-area/portfolio'); }}
+                  className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs uppercase tracking-[0.15em] rounded-xl transition-all hover:-translate-y-0.5 shadow-lg shadow-indigo-500/20"
                 >
-                  Cancel
+                  View Portfolio
                 </button>
-                <button 
-                  onClick={handleVerifyOtp}
-                  disabled={txLoading || otp.length < 6}
-                  className="flex-1 py-3 bg-indigo-600 text-white font-bold text-sm rounded-xl hover:bg-indigo-700 disabled:opacity-50"
+                <button
+                  onClick={() => { setShowSuccessModal(false); navigate('/dashboard-area/mutual-funds'); }}
+                  className="w-full py-3.5 text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-bold text-xs uppercase tracking-[0.15em] bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-all"
                 >
-                  {txLoading ? "Verifying..." : "Verify & Pay"}
-                </button>
-              </div>
-
-              <div className="mt-4 text-center">
-                <button 
-                  onClick={handleResendOtp}
-                  className="text-xs font-bold text-indigo-500 hover:text-indigo-600"
-                >
-                  Resend OTP
+                  Continue Browsing
                 </button>
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
+
+      <MpinModal
+        isOpen={showMpin}
+        onClose={() => { setShowMpin(false); setMpinError(''); setPendingItems([]); }}
+        onVerified={handleMpinVerified}
+        title="Confirm Fund Purchase"
+        description={pendingItems.length > 0 ? `Total: ₹${pendingItems.reduce((a, i) => a + Number(i.amount), 0).toLocaleString('en-IN')}` : ''}
+        isLoading={mpinLoading}
+        error={mpinError}
+        isMpinSet={isMpinSet}
+      />
     </div>
   );
 }

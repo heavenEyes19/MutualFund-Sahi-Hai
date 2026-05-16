@@ -105,7 +105,6 @@ const Navbar = ({ isDarkMode, onDarkModeToggle }) => {
         { name: 'KYC Approvals', path: '/dashboard-area/kyc-management' },
         { name: 'Fund Master', path: '/dashboard-area/fund-master' },
         { name: 'Support', path: '/dashboard-area/admin-support' },
-        { name: 'Profile', path: '/dashboard-area/profile' },
         { name: 'Settings', path: '/dashboard-area/settings' },
       ]
     : [
@@ -114,7 +113,6 @@ const Navbar = ({ isDarkMode, onDarkModeToggle }) => {
         { name: 'SIPs', path: '/dashboard-area/sips' },
         { name: 'Mutual Funds', path: '/dashboard-area/mutual-funds' },
         { name: 'Support', path: '/dashboard-area/support' },
-        { name: 'Profile', path: '/dashboard-area/profile' },
       ];
 
   return (
@@ -333,20 +331,17 @@ const Navbar = ({ isDarkMode, onDarkModeToggle }) => {
                     </div>
 
                     <div className="space-y-0.5">
-                      {tabs.map((tab) => (
-                        <Link 
-                          key={tab.path}
-                          to={tab.path}
-                          onClick={() => setIsMenuOpen(false)}
-                          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-bold transition-all ${
-                            isActiveTab(tab.path)
-                              ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
-                              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
-                          }`}
-                        >
-                          {tab.name}
-                        </Link>
-                      ))}
+                      <Link 
+                        to="/dashboard-area/profile"
+                        onClick={() => setIsMenuOpen(false)}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-bold transition-all ${
+                          isActiveTab('/dashboard-area/profile')
+                            ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
+                            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                        }`}
+                      >
+                        Profile
+                      </Link>
                     </div>
 
                     <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">

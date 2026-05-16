@@ -1,24 +1,20 @@
-import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import Transaction from "../models/Transaction.js";
 import Holding from "../models/Holding.js";
 import User from "../models/User.js";
 import WalletTransaction from "../models/WalletTransaction.js";
-import OTP from "../models/OTP.js";
-import sendEmail from "../utils/sendEmail.js";
-import { sendNotification } from "../utils/notificationService.js";
 
 const parsePositiveNav = (value) => {
   const parsed = Number.parseFloat(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 };
 
-// Initiate Wallet Buy
+// Initiate Wallet Buy — checks balance, returns whether MPIN is set
 export const initiateBuy = async (req, res) => {
   try {
     const { schemeCode, schemeName, amount, nav, items } = req.body;
     const itemsToProcess = items || [{ schemeCode, schemeName, amount, nav }];
-    
+
     if (itemsToProcess.length === 0 || !itemsToProcess.every(item => parsePositiveNav(item.nav))) {
       return res.status(400).json({ message: "Invalid NAV data." });
     }
@@ -31,61 +27,41 @@ export const initiateBuy = async (req, res) => {
       return res.status(400).json({ message: "Insufficient wallet balance." });
     }
 
-    // Generate 6 digit OTP
-    const otp = crypto.randomInt(100000, 999999).toString();
-    const salt = await bcrypt.genSalt(10);
-    const otpHash = await bcrypt.hash(otp, salt);
-
-    // Delete any existing OTPs for this action
-    await OTP.deleteMany({ email: user.email, action: "FUND_PURCHASE" });
-
-    // Save OTP
-    await OTP.create({
-      email: user.email,
-      otpHash,
-      action: "FUND_PURCHASE",
-      metadata: { items: itemsToProcess, totalAmount },
+    res.json({
+      message: "Proceed with MPIN verification",
+      isMpinSet: !!user.mpin,
+      totalAmount,
+      items: itemsToProcess,
     });
-
-    // Send email
-    let fundNames = itemsToProcess.map(i => i.schemeName).join(", ");
-    await sendEmail({
-      email: user.email,
-      subject: "OTP for Mutual Fund Purchase",
-      message: `Your OTP for purchasing ${fundNames} worth ₹${totalAmount} is ${otp}. It is valid for 5 minutes.`,
-    });
-
-    res.json({ message: "OTP sent to your email" });
   } catch (error) {
     res.status(500).json({ message: error.message || "Failed to initiate purchase" });
   }
 };
 
-// Verify Wallet Buy
+// Verify MPIN and execute purchase
 export const verifyBuy = async (req, res) => {
   try {
-    const { otp } = req.body;
+    const { mpin, items, totalAmount } = req.body;
     const userId = req.user.id;
     const user = await User.findById(userId);
 
-    const otpRecord = await OTP.findOne({ email: user.email, action: "FUND_PURCHASE" }).sort({ createdAt: -1 });
-    if (!otpRecord) {
-      return res.status(400).json({ message: "OTP expired or invalid" });
+    if (!user.mpin) {
+      return res.status(400).json({ message: "MPIN not set. Please set your MPIN first." });
     }
 
-    const isMatch = await bcrypt.compare(otp.toString(), otpRecord.otpHash);
+    const isMatch = await bcrypt.compare(mpin.toString(), user.mpin);
     if (!isMatch) {
-      return res.status(400).json({ message: "Incorrect OTP" });
+      return res.status(400).json({ message: "Incorrect MPIN" });
     }
 
-    const { items: itemsToProcess, totalAmount } = otpRecord.metadata;
+    const itemsToProcess = items || [];
+    const amountToDeduct = totalAmount || itemsToProcess.reduce((s, i) => s + Number(i.amount), 0);
 
-    if (user.walletBalance < totalAmount) {
+    if (user.walletBalance < amountToDeduct) {
       return res.status(400).json({ message: "Insufficient wallet balance." });
     }
 
-    // Deduct wallet balance
-    user.walletBalance -= totalAmount;
+    user.walletBalance -= amountToDeduct;
     await user.save();
 
     for (const item of itemsToProcess) {
@@ -93,7 +69,7 @@ export const verifyBuy = async (req, res) => {
       if (!validNav) continue;
 
       const units = parseFloat((item.amount / validNav).toFixed(4));
-      
+
       const newTransaction = new Transaction({
         user: userId,
         schemeCode: item.schemeCode,
@@ -105,7 +81,6 @@ export const verifyBuy = async (req, res) => {
       });
       await newTransaction.save();
 
-      // Wallet Transaction
       const walletTx = new WalletTransaction({
         user: userId,
         type: "FUND_PURCHASE",
@@ -115,7 +90,6 @@ export const verifyBuy = async (req, res) => {
       });
       await walletTx.save();
 
-      // Update or create holding
       let holding = await Holding.findOne({ user: userId, schemeCode: item.schemeCode });
       if (holding) {
         holding.investedAmount += item.amount;
@@ -134,19 +108,6 @@ export const verifyBuy = async (req, res) => {
         await holding.save();
       }
     }
-
-    // Delete used OTP
-    await OTP.deleteOne({ _id: otpRecord._id });
-
-    // Send Notification
-    await sendNotification({
-      req,
-      userId,
-      title: "Investment Successful",
-      message: `₹${totalAmount} invested successfully.`,
-      type: "investment",
-      metadata: { totalAmount }
-    });
 
     res.json({ message: "Purchase successful", balance: user.walletBalance });
   } catch (error) {

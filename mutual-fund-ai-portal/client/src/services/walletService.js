@@ -20,7 +20,7 @@ export const initiateWithdraw = async (amount, bankAccount) => {
   return data;
 };
 
-export const verifyWithdraw = async (otp) => {
-  const { data } = await API.post("/wallet/withdraw/verify", { otp });
+export const verifyWithdraw = async ({ mpin, amount, bankAccount }) => {
+  const { data } = await API.post("/wallet/withdraw/verify", { mpin, amount, bankAccount });
   return data;
 };
