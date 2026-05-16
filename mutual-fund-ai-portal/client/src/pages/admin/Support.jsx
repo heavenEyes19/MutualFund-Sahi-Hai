@@ -3,6 +3,7 @@ import axios from 'axios';
 import { io } from 'socket.io-client';
 import { Search, Send, User } from 'lucide-react';
 import useAuthStore from '../../store/useAuthStore';
+import { BACKEND_URL } from '../../services/api';
 
 const Support = () => {
   const { user } = useAuthStore();
@@ -15,7 +16,7 @@ const Support = () => {
 
   async function fetchInvestors() {
     try {
-      const res = await axios.get('http://localhost:5000/api/chat/investors', {
+      const res = await axios.get(`${BACKEND_URL}/api/chat/investors`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       setInvestors(res.data);
@@ -25,7 +26,7 @@ const Support = () => {
   }
 
   useEffect(() => {
-    const newSocket = io('http://localhost:5000');
+    const newSocket = io(BACKEND_URL);
     setTimeout(() => setSocket(newSocket), 0);
 
     // Initial fetch of investors who chatted
@@ -55,7 +56,7 @@ const Support = () => {
 
   const fetchHistory = async (investorId) => {
     try {
-      const res = await axios.get(`http://localhost:5000/api/chat/history/${investorId}`, {
+      const res = await axios.get(`${BACKEND_URL}/api/chat/history/${investorId}`, {
         headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
       });
       setMessages(res.data);

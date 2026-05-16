@@ -1,7 +1,9 @@
 import axios from "axios";
 
+export const BACKEND_URL = `http://${window.location.hostname}:5000`;
+
 const API = axios.create({
-  baseURL: "http://localhost:5000/api",
+  baseURL: `${BACKEND_URL}/api`,
 });
 
 API.interceptors.request.use((req) => {
