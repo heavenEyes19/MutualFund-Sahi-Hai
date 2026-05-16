@@ -116,7 +116,7 @@ async function resolveFundData(fundName) {
 }
 
 // ─── Step 4: Groq summary (ALWAYS runs) ──────────────────────────────────
-async function getSummary(userMsg, fundsData, portfolioText) {
+async function getSummary(userMsg, fundsData, portfolioText, detailed = false) {
 
   const makeError = (conclusion, simpleWords) => ({
     contextLabel: "AI Advisor",
@@ -178,7 +178,12 @@ STRICT RULES for suggestedActions:
 - NEVER use suggestedActions for investment advice like "Start with large-cap funds" or "Consider index funds".
 - All fund category recommendations, specific fund names, and investment strategy details MUST go inside detailedAnalysis only.
 
-Limit insights to 2-4 items. iconType must be one of: TrendingUp, TrendingDown, PieChart, Calendar, Shield, Target, AlertCircle.`
+Limit insights to 2-4 items. iconType must be one of: TrendingUp, TrendingDown, PieChart, Calendar, Shield, Target, AlertCircle.
+
+${detailed
+  ? `RESPONSE MODE: DETAILED — Give a thorough, comprehensive analysis. Fill in detailedAnalysis with at least 3-5 paragraphs including category recommendations, risk calculations, before/after impact, and strategy. simpleWords can be 3-4 sentences.`
+  : `RESPONSE MODE: COMPACT — Be concise. Fill simpleWords with only 1-2 crisp, clear sentences. Keep verdict.conclusion under 15 words. Keep detailedAnalysis very short (1-2 sentences max) or empty. Skip insights if not critical.`
+}`
           },
           {
             role: "user",
@@ -262,6 +267,8 @@ Limit insights to 2-4 items. iconType must be one of: TrendingUp, TrendingDown, 
 router.post("/chatbot", protect, async (req, res) => {
   try {
     const userMsg = req.body.message?.trim();
+    const detailed = req.body.detailed === true; // compact by default
+
     if (!userMsg)
       return res.status(400).json({ reply: "Empty message." });
 
@@ -331,8 +338,8 @@ ${sipStr}
       ? (await Promise.all(fundNames.map(resolveFundData))).filter(Boolean)
       : [];
 
-    // ✅ ALWAYS generate reply (with or without data)
-    const reply = await getSummary(userMsg, fundsData, portfolioText);
+    // ✅ ALWAYS generate reply (with or without data), pass detailed flag
+    const reply = await getSummary(userMsg, fundsData, portfolioText, detailed);
 
     res.json({
       reply,
