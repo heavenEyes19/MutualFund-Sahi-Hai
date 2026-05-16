@@ -308,7 +308,7 @@ const ChatWidget = () => {
       )}
 
       {/* ══ COMPACT: Bottom-right popup ══ */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3 pointer-events-none">
 
         {/* Compact Chat Window */}
         <div className={`transition-all duration-500 ease-out origin-bottom-right ${
@@ -422,7 +422,7 @@ const ChatWidget = () => {
 
         {/* Teaser Bubble */}
         {showTeaser && !isOpen && (
-          <div className={`transition-all duration-400 ease-out ${teaserVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-3'}`}>
+          <div className={`pointer-events-auto transition-all duration-400 ease-out ${teaserVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-3'}`}>
             <div
               onClick={handleOpen}
               className="bg-white/85 dark:bg-[#1A1A1A]/90 backdrop-blur-md border border-white/60 dark:border-[#333] rounded-2xl rounded-br-[6px] px-4 py-2.5 shadow-lg cursor-pointer hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 max-w-[220px] flex items-center gap-2 group"
@@ -441,7 +441,7 @@ const ChatWidget = () => {
         {/* FAB Button */}
         <button
           onClick={isOpen ? () => { setIsOpen(false); setIsExpanded(false); } : handleOpen}
-          className={`relative w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all duration-300 ease-out ${
+          className={`pointer-events-auto relative w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all duration-300 ease-out ${
             isOpen
               ? 'bg-white/80 dark:bg-[#2A2A2A]/80 backdrop-blur-md border border-white/60 dark:border-[#444] hover:bg-white dark:hover:bg-[#333]'
               : 'bg-emerald-500 hover:bg-emerald-400 hover:scale-110 hover:shadow-emerald-400/40 hover:shadow-2xl'

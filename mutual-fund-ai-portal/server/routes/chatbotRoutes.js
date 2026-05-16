@@ -3,6 +3,7 @@ import { protect } from "../middleware/authMiddleware.js";
 import Holding from "../models/Holding.js";
 import SIP from "../models/SIP.js";
 import KYC from "../models/KYC.js";
+import User from "../models/User.js";
 import { getEnrichedPortfolioData } from "../controllers/portfolioController.js";
 
 const router = express.Router();
@@ -359,6 +360,70 @@ ${sipStr}
       },
       funds: []
     });
+  }
+});
+
+// ─── Quick Insight Route (for Explore Page) ──────────────────────────────
+router.get("/insight", protect, async (req, res) => {
+  try {
+    const [portfolioData, user] = await Promise.all([
+      getEnrichedPortfolioData(req.user._id),
+      User.findById(req.user._id)
+    ]);
+
+    const walletBalance = user?.walletBalance || 0;
+    let totalInvested = 0;
+    let portfolioInfo = "No mutual fund investments yet.";
+
+    if (portfolioData && portfolioData.holdings.length > 0) {
+      totalInvested = portfolioData.overview.totalInvested;
+      portfolioInfo = `Total Invested: ₹${totalInvested.toFixed(0)}, Current Value: ₹${portfolioData.overview.currentValue.toFixed(0)}, Returns: ${portfolioData.overview.totalReturnsPercent.toFixed(2)}%. Top holdings: ${portfolioData.holdings.slice(0, 2).map(h => h.schemeName).join(", ")}.`;
+    }
+
+    const promptText = `
+You are a financial AI advisor. The user is visiting their dashboard.
+User Wallet Balance: ₹${walletBalance}
+User Portfolio: ${portfolioInfo}
+
+Generate ONE quick, highly personalized financial insight for them in JSON format.
+Keep it strictly under 2 sentences. 
+Example JSON:
+{
+  "title": "Idle Wallet Funds",
+  "message": "You have ₹10,000 sitting idle. Consider starting a SIP in a Flexi Cap fund to beat inflation."
+}
+Do not use markdown formatting outside the JSON block. Only return valid JSON.`;
+
+    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "meta-llama/llama-4-scout-17b-16e-instruct",
+        response_format: { type: "json_object" },
+        messages: [{ role: "system", content: promptText }]
+      }),
+    });
+
+    if (!groqRes.ok) {
+      return res.status(200).json({ title: "Smart Investing", message: "A diversified portfolio is key to long term wealth. Explore our top mutual funds today." });
+    }
+
+    const json = await groqRes.json();
+    const raw = json.choices?.[0]?.message?.content?.trim();
+    
+    try {
+      const parsed = JSON.parse(raw);
+      res.status(200).json(parsed);
+    } catch {
+      res.status(200).json({ title: "Keep Investing", message: "Consistency is the secret to building a great financial legacy." });
+    }
+
+  } catch (error) {
+    console.error("AI insight error:", error);
+    res.status(200).json({ title: "Market Insight", message: "Systematic Investment Plans (SIPs) help average out market volatility over time." });
   }
 });
 

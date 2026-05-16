@@ -1,7 +1,13 @@
 import { Outlet } from 'react-router-dom';
+import { Toaster, toast } from 'react-hot-toast';
+import { useEffect, useState } from 'react';
+import { io } from 'socket.io-client';
 import Navbar from '../components/layout/Navbar';
 import useDarkMode from '../hooks/useDarkMode';
 import ChatWidget from '../components/chat/ChatWidget';
+import useAuthStore from '../store/useAuthStore';
+import useNotificationStore from '../store/useNotificationStore';
+import { BACKEND_URL } from '../services/api';
 
 /**
  * Main dashboard layout wrapper
@@ -9,6 +15,35 @@ import ChatWidget from '../components/chat/ChatWidget';
  */
 const DashboardLayout = () => {
   const [isDarkMode, toggleDarkMode] = useDarkMode();
+  const { user } = useAuthStore();
+  const { fetchNotifications, addNotification } = useNotificationStore();
+  const [socket, setSocket] = useState(null);
+
+  useEffect(() => {
+    if (user) {
+      fetchNotifications();
+      const newSocket = io(BACKEND_URL);
+      
+      newSocket.on("connect", () => {
+        newSocket.emit("joinChat", user._id || user.id);
+      });
+
+      newSocket.on("newNotification", (notification) => {
+        addNotification(notification);
+        toast(notification.title + "\n" + notification.message, {
+          icon: '🔔',
+          style: {
+            borderRadius: '12px',
+            background: isDarkMode ? '#1E293B' : '#fff',
+            color: isDarkMode ? '#fff' : '#0f172a',
+          },
+        });
+      });
+
+      setSocket(newSocket);
+      return () => newSocket.disconnect();
+    }
+  }, [user, fetchNotifications, addNotification]);
 
   return (
     <div className={`${isDarkMode ? 'dark' : ''} min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300`}>
@@ -25,6 +60,7 @@ const DashboardLayout = () => {
         <Outlet />
       </main>
       <ChatWidget />
+      <Toaster position="top-right" />
     </div>
   );
 };

@@ -141,8 +141,8 @@ const Support = () => {
   };
 
   const filteredInvestors = investors.filter(inv => 
-    inv.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    inv.email.toLowerCase().includes(searchQuery.toLowerCase())
+    (inv?.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (inv?.email || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -198,7 +198,7 @@ const Support = () => {
                     >
                       {isActive && <div className="absolute left-0 top-0 w-1 h-full bg-indigo-600" />}
                       <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg transition-transform group-hover:scale-110 ${isActive ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
-                        {inv.name.charAt(0)}
+                        {inv?.name?.charAt(0) || 'U'}
                       </div>
                       <div className="min-w-0">
                         <p className={`font-black text-sm tracking-tight truncate ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-900 dark:text-white'}`}>{inv.name}</p>
@@ -218,7 +218,7 @@ const Support = () => {
                 <header className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-transparent">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-black text-xl">
-                       {activeInvestor.name.charAt(0)}
+                       {activeInvestor?.name?.charAt(0) || 'U'}
                     </div>
                     <div>
                       <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tighter">{activeInvestor.name}</h2>

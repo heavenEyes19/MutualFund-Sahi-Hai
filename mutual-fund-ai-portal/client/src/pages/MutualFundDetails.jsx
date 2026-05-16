@@ -729,7 +729,7 @@ export default function MutualFundDetails() {
       {/* MODALS OVERHAUL */}
       <AnimatePresence>
         {showTxModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div initial={{opacity: 0}} animate={{opacity: 1}} exit={{opacity: 0}} onClick={() => setShowTxModal(false)} className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" />
             <motion.div initial={{scale: 0.95, y: 40}} animate={{scale: 1, y: 0}} exit={{scale: 0.95, y: 40}} className="ui-card dark:bg-slate-900 border-none w-full max-w-md overflow-hidden relative shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)]">
               <div className="p-10">
@@ -774,21 +774,13 @@ export default function MutualFundDetails() {
                    </div>
 
                    {txType === 'buy' && isSipSelected && (
-                     <div className="grid grid-cols-2 gap-4">
+                     <div className="grid grid-cols-1 gap-4">
                         <div>
                           <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-600 ml-1 mb-2 block">Duration</label>
                           <select value={txDuration} onChange={e => setTxDuration(e.target.value)} className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl text-slate-900 dark:text-white font-black text-sm outline-none">
                             <option value="12">12 Months</option>
                             <option value="24">24 Months</option>
                             <option value="36">36 Months</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-600 ml-1 mb-2 block">SIP Date</label>
-                          <select className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl text-slate-900 dark:text-white font-black text-sm outline-none">
-                            <option>5th</option>
-                            <option>10th</option>
-                            <option>15th</option>
                           </select>
                         </div>
                      </div>
@@ -814,7 +806,7 @@ export default function MutualFundDetails() {
         )}
 
         {showSuccessModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div initial={{opacity: 0}} animate={{opacity: 1}} className="absolute inset-0 bg-slate-950/90 backdrop-blur-xl" />
             <motion.div initial={{scale: 0.9, opacity: 0}} animate={{scale: 1, opacity: 1}} className="relative bg-white dark:bg-slate-900 rounded-[40px] p-12 text-center max-w-sm shadow-2xl">
               <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg shadow-emerald-500/40">
@@ -833,7 +825,7 @@ export default function MutualFundDetails() {
         )}
 
         {showKycModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div initial={{opacity: 0}} animate={{opacity: 1}} onClick={() => setShowKycModal(false)} className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" />
             <motion.div initial={{scale: 0.95, y: 40}} animate={{scale: 1, y: 0}} className="ui-card dark:bg-slate-900 w-full max-w-md p-10 text-center relative">
               <div className="w-16 h-16 bg-amber-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
@@ -850,7 +842,7 @@ export default function MutualFundDetails() {
         )}
 
         {showOtpModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div initial={{opacity: 0}} animate={{opacity: 1}} className="absolute inset-0 bg-slate-950/90 backdrop-blur-xl" />
             <motion.div initial={{scale: 0.9, opacity: 0}} animate={{scale: 1, opacity: 1}} className="relative bg-white dark:bg-slate-900 rounded-[30px] p-8 max-w-sm w-full shadow-2xl">
               <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Verify Purchase</h3>

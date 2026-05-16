@@ -6,6 +6,7 @@ import User from "../models/User.js";
 import WalletTransaction from "../models/WalletTransaction.js";
 import OTP from "../models/OTP.js";
 import sendEmail from "../utils/sendEmail.js";
+import { sendNotification } from "../utils/notificationService.js";
 
 const parsePositiveNav = (value) => {
   const parsed = Number.parseFloat(value);
@@ -136,6 +137,16 @@ export const verifyBuy = async (req, res) => {
 
     // Delete used OTP
     await OTP.deleteOne({ _id: otpRecord._id });
+
+    // Send Notification
+    await sendNotification({
+      req,
+      userId,
+      title: "Investment Successful",
+      message: `₹${totalAmount} invested successfully.`,
+      type: "investment",
+      metadata: { totalAmount }
+    });
 
     res.json({ message: "Purchase successful", balance: user.walletBalance });
   } catch (error) {

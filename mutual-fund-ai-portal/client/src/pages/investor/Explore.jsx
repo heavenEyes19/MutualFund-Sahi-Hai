@@ -101,6 +101,7 @@ export default function Explore() {
   const [data, setData] = useState({ trending: [], recommended: null, portfolio: null, sips: [] });
   const [loading, setLoading] = useState(true);
   const [aiReview, setAiReview] = useState(null);
+  const [insight, setInsight] = useState(null);
   const [isReviewing, setIsReviewing] = useState(false);
 
   useEffect(() => {
@@ -134,13 +135,23 @@ export default function Explore() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [trend, rec, port, sips] = await Promise.all([
+        const API = (await import('../../services/api')).default;
+        const [trend, rec, port, sips, insightRes] = await Promise.all([
           getTrendingFunds().catch(() => []),
           getRecommendedFunds().catch(() => null),
           getPortfolio().catch(() => null),
-          getSIPs().catch(() => [])
+          getSIPs().catch(() => []),
+          API.get('/chatbot/insight').catch(() => null)
         ]);
         setData({ trending: trend || [], recommended: rec, portfolio: port, sips: sips || [] });
+        if (insightRes && insightRes.data) {
+          setInsight(insightRes.data);
+        } else {
+          setInsight({
+            title: "Market Insight",
+            message: "Systematic Investment Plans (SIPs) help average out market volatility over time. Stay invested for the long term."
+          });
+        }
       } catch (error) {
         console.error("Failed to load explore data", error);
       } finally {
@@ -162,10 +173,10 @@ export default function Explore() {
     { schemeCode: 'mock6', schemeName: 'Quant Active Fund — Direct', returns5Y: 28.61, category: 'Multi cap', risk: 'Very high risk' },
   ];
 
-  const totalInvested = data.portfolio?.assets?.reduce((sum, a) => sum + (a.investedValue || 0), 0) || 0;
-  const currentValue = data.portfolio?.assets?.reduce((sum, a) => sum + (a.currentValue || 0), 0) || 0;
-  const returns = currentValue - totalInvested;
-  const activeSipsCount = data.sips?.filter(s => s.status === 'ACTIVE').length || 0;
+  const totalInvested = data.portfolio?.overview?.totalInvested || 0;
+  const currentValue = data.portfolio?.overview?.currentValue || 0;
+  const returns = data.portfolio?.overview?.totalReturns || 0;
+  const activeSipsCount = Array.isArray(data.sips) ? data.sips.filter(s => s.status === 'ACTIVE').length : 0;
 
   if (loading) {
     return (
@@ -200,6 +211,48 @@ export default function Explore() {
             </h1>
           </motion.div>
 
+          {/* AI/Market Insight Banner */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="relative overflow-hidden rounded-[24px] bg-gradient-to-r from-indigo-500 to-purple-600 p-6 sm:p-8 shadow-xl shadow-indigo-500/20"
+          >
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-500/20 rounded-full blur-2xl translate-y-1/2 -translate-x-1/4" />
+            
+            <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 shrink-0 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30">
+                  <Sparkles size={24} className="text-white" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="px-2 py-0.5 rounded-md bg-white/20 text-white text-[10px] font-bold uppercase tracking-wider">AI Insight</span>
+                    <span className="text-white/80 text-[11px] font-medium">Just now</span>
+                  </div>
+                  {insight ? (
+                    <>
+                      <h3 className="text-white font-bold text-lg sm:text-xl leading-tight mb-1">{insight.title}</h3>
+                      <p className="text-white/80 text-sm max-w-md leading-relaxed">{insight.message}</p>
+                    </>
+                  ) : (
+                    <div className="animate-pulse">
+                      <div className="h-6 bg-white/20 rounded w-48 mb-2"></div>
+                      <div className="h-4 bg-white/20 rounded w-64"></div>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <button 
+                onClick={() => navigate('/dashboard-area/mutual-funds')}
+                className="shrink-0 bg-white hover:bg-slate-50 text-indigo-600 px-6 py-3 rounded-xl font-bold text-sm transition-all hover:scale-105 active:scale-95 shadow-lg flex items-center gap-2"
+              >
+                Explore Funds <ArrowRight size={16} />
+              </button>
+            </div>
+          </motion.div>
+
           {/* Popular Funds */}
           <section className="space-y-6">
             <div className="flex items-center justify-between">
@@ -213,7 +266,7 @@ export default function Explore() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {displayTrending.slice(0, 3).map((fund, idx) => (
-                <PopularFundCard key={fund.schemeCode} fund={fund} iconType={idx} onClick={() => navigate(`/dashboard-area/mutual-funds?scheme=${fund.schemeCode}`)} />
+                <PopularFundCard key={fund.schemeCode} fund={fund} iconType={idx} onClick={() => navigate(`/dashboard-area/mutual-funds/${fund.schemeCode}`)} />
               ))}
             </div>
           </section>
@@ -257,7 +310,7 @@ export default function Explore() {
                   fund={fund}
                   iconType={idx}
                   isLast={idx === 2}
-                  onClick={() => navigate(`/dashboard-area/mutual-funds?scheme=${fund.schemeCode}`)}
+                  onClick={() => navigate(`/dashboard-area/mutual-funds/${fund.schemeCode}`)}
                 />
               ))}
             </div>

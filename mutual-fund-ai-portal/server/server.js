@@ -29,6 +29,9 @@ const io = new Server(server, {
   }
 });
 
+// Attach io to the Express app for global access in controllers
+app.set("io", io);
+
 io.on("connection", (socket) => {
   console.log("Socket connected:", socket.id);
 

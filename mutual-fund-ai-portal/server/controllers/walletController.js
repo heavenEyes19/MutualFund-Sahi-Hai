@@ -5,6 +5,7 @@ import User from "../models/User.js";
 import WalletTransaction from "../models/WalletTransaction.js";
 import OTP from "../models/OTP.js";
 import sendEmail from "../utils/sendEmail.js";
+import { sendNotification } from "../utils/notificationService.js";
 
 const getRazorpayInstance = () => {
   return new Razorpay({
@@ -79,6 +80,15 @@ export const verifyTopup = async (req, res) => {
       razorpayPaymentId: razorpay_payment_id,
     });
     await newTx.save();
+
+    await sendNotification({
+      req,
+      userId,
+      title: "Money Added",
+      message: `₹${amount} added to wallet successfully.`,
+      type: "wallet",
+      metadata: { txId: newTx._id, amount }
+    });
 
     res.json({ message: "Top-up successful", balance: user.walletBalance });
   } catch (error) {
@@ -187,6 +197,15 @@ export const verifyWithdraw = async (req, res) => {
 
     // Delete used OTP
     await OTP.deleteOne({ _id: otpRecord._id });
+
+    await sendNotification({
+      req,
+      userId,
+      title: "Withdrawal Successful",
+      message: `₹${amount} transferred to bank.`,
+      type: "wallet",
+      metadata: { txId: newTx._id, amount }
+    });
 
     res.json({ message: "Withdrawal processed successfully", balance: user.walletBalance });
 

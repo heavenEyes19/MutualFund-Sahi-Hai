@@ -2,6 +2,7 @@ import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import generateToken from "../utils/generateToken.js";
 import sendEmail from "../utils/sendEmail.js";
+import { sendNotification } from "../utils/notificationService.js";
 
 
 // 🔹 REGISTER
@@ -116,6 +117,15 @@ export const verifyOtp = async (req, res) => {
     user.otp = undefined;
     user.otpExpires = undefined;
     await user.save();
+
+    // Send security notification (New Login Detected)
+    await sendNotification({
+      req,
+      userId: user._id,
+      title: "New Login Detected",
+      message: `A new login was detected on your account.`,
+      type: "security"
+    });
 
     res.json({
       _id: user._id,
