@@ -30,6 +30,7 @@ import KYCPage from '../pages/investor/KYCPage';
 import Profile from '../pages/Profile';
 import Explore from '../pages/investor/Explore';
 import Cart from '../pages/investor/Cart';
+import InvestorSupport from '../pages/investor/Support';
 
 
 // Page imports - Admin
@@ -143,6 +144,14 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <Profile />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'support',
+        element: (
+          <ProtectedRoute>
+            <InvestorSupport />
           </ProtectedRoute>
         ),
       },

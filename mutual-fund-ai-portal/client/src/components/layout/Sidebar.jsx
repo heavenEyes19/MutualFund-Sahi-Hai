@@ -116,13 +116,14 @@ const Sidebar = ({ isOpen, onClose }) => {
             <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest px-4 mb-2">
               Support
             </p>
-            <a
-              href="#help"
+            <Link
+              to="/dashboard-area/support"
+              onClick={onClose}
               className="flex items-center gap-4 px-4 py-3.5 rounded-xl text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 transition-all duration-300 group border border-transparent"
             >
               <Sparkles size={18} className="text-slate-500 group-hover:text-slate-300" />
               <span className="text-sm font-semibold tracking-wide">Help & Docs</span>
-            </a>
+            </Link>
           </div>
         </nav>
       </aside>
