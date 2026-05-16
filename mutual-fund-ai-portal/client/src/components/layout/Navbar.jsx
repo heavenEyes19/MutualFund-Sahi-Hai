@@ -7,6 +7,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import useAuthStore from '../../store/useAuthStore';
 import useCartStore from '../../store/useCartStore';
+import WalletDropdown from '../wallet/WalletDropdown';
+import { getWalletDetails } from '../../services/walletService';
 
 const Navbar = ({ isDarkMode, onDarkModeToggle }) => {
   const { user, logout } = useAuthStore();
@@ -18,15 +20,25 @@ const Navbar = ({ isDarkMode, onDarkModeToggle }) => {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isWalletOpen, setIsWalletOpen] = useState(false);
+  const [walletBalance, setWalletBalance] = useState(0);
   
   const menuRef = useRef(null);
   const notifRef = useRef(null);
+  const walletRef = useRef(null);
+
+  useEffect(() => {
+    if (user && user.role !== 'admin') {
+      getWalletDetails().then(data => setWalletBalance(data.balance)).catch(console.error);
+    }
+  }, [user]);
 
   // Close menus on click outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) setIsMenuOpen(false);
       if (notifRef.current && !notifRef.current.contains(event.target)) setIsNotificationsOpen(false);
+      if (walletRef.current && !walletRef.current.contains(event.target)) setIsWalletOpen(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -109,6 +121,26 @@ const Navbar = ({ isDarkMode, onDarkModeToggle }) => {
             >
               {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
             </button>
+
+            {/* Wallet Icon */}
+            {user?.role !== 'admin' && (
+              <div className="relative" ref={walletRef}>
+                <button
+                  onClick={() => setIsWalletOpen(!isWalletOpen)}
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-100 dark:bg-slate-900 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 flex items-center justify-center transition-all text-slate-600 dark:text-slate-400 active:scale-95"
+                >
+                  <Wallet size={18} />
+                  {walletBalance > 0 && (
+                    <span className="absolute top-2 right-2 w-2 h-2 bg-[#4ade80] border-2 border-white dark:border-slate-900 rounded-full"></span>
+                  )}
+                </button>
+                <AnimatePresence>
+                  {isWalletOpen && (
+                    <WalletDropdown onClose={() => setIsWalletOpen(false)} />
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
 
             {/* Notification Bell */}
             <div className="relative" ref={notifRef}>

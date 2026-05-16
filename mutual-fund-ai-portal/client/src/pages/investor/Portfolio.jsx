@@ -118,7 +118,7 @@ const Portfolio = () => {
               <PlusCircle size={18} /> Invest
             </button>
             <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
-              <MinusCircle size={18} /> Redeem
+              <MinusCircle size={18} /> Sell
             </button>
           </div>
         </div>
@@ -283,7 +283,7 @@ const Portfolio = () => {
                             disabled={sellingFundId === fund.schemeCode}
                             className="px-4 py-2 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-600 hover:text-white text-rose-600 dark:text-rose-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-50"
                           >
-                            {sellingFundId === fund.schemeCode ? 'Processing…' : 'Redeem All'}
+                            {sellingFundId === fund.schemeCode ? 'Processing…' : 'Sell All'}
                           </button>
                         </td>
                       </tr>

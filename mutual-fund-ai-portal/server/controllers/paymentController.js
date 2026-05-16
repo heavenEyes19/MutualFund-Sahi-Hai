@@ -1,73 +1,91 @@
-import Razorpay from "razorpay";
 import crypto from "crypto";
+import bcrypt from "bcryptjs";
 import Transaction from "../models/Transaction.js";
 import Holding from "../models/Holding.js";
+import User from "../models/User.js";
+import WalletTransaction from "../models/WalletTransaction.js";
+import OTP from "../models/OTP.js";
+import sendEmail from "../utils/sendEmail.js";
 
 const parsePositiveNav = (value) => {
   const parsed = Number.parseFloat(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 };
 
-export const createOrder = async (req, res) => {
+// Initiate Wallet Buy
+export const initiateBuy = async (req, res) => {
   try {
-    const { amount } = req.body;
-
-    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
-      return res.status(500).json({ message: "Razorpay keys not configured" });
+    const { schemeCode, schemeName, amount, nav, items } = req.body;
+    const itemsToProcess = items || [{ schemeCode, schemeName, amount, nav }];
+    
+    if (itemsToProcess.length === 0 || !itemsToProcess.every(item => parsePositiveNav(item.nav))) {
+      return res.status(400).json({ message: "Invalid NAV data." });
     }
 
-    const instance = new Razorpay({
-      key_id: (process.env.RAZORPAY_KEY_ID || "").trim(),
-      key_secret: (process.env.RAZORPAY_KEY_SECRET || "").trim(),
+    const totalAmount = itemsToProcess.reduce((sum, item) => sum + Number(item.amount), 0);
+    const userId = req.user.id;
+    const user = await User.findById(userId);
+
+    if (user.walletBalance < totalAmount) {
+      return res.status(400).json({ message: "Insufficient wallet balance." });
+    }
+
+    // Generate 6 digit OTP
+    const otp = crypto.randomInt(100000, 999999).toString();
+    const salt = await bcrypt.genSalt(10);
+    const otpHash = await bcrypt.hash(otp, salt);
+
+    // Delete any existing OTPs for this action
+    await OTP.deleteMany({ email: user.email, action: "FUND_PURCHASE" });
+
+    // Save OTP
+    await OTP.create({
+      email: user.email,
+      otpHash,
+      action: "FUND_PURCHASE",
+      metadata: { items: itemsToProcess, totalAmount },
     });
 
-    const options = {
-      amount: amount * 100, // amount in smallest currency unit
-      currency: "INR",
-      receipt: `receipt_order_${Math.floor(Math.random() * 10000)}`,
-    };
+    // Send email
+    let fundNames = itemsToProcess.map(i => i.schemeName).join(", ");
+    await sendEmail({
+      email: user.email,
+      subject: "OTP for Mutual Fund Purchase",
+      message: `Your OTP for purchasing ${fundNames} worth ₹${totalAmount} is ${otp}. It is valid for 5 minutes.`,
+    });
 
-    const order = await instance.orders.create(options);
-
-    if (!order) return res.status(500).send("Some error occured");
-
-    res.json(order);
+    res.json({ message: "OTP sent to your email" });
   } catch (error) {
-    res.status(500).json({ message: error.message || "Failed to create order" });
+    res.status(500).json({ message: error.message || "Failed to initiate purchase" });
   }
 };
 
-export const verifyPayment = async (req, res) => {
+// Verify Wallet Buy
+export const verifyBuy = async (req, res) => {
   try {
-    const {
-      razorpay_order_id,
-      razorpay_payment_id,
-      razorpay_signature,
-      schemeCode,
-      schemeName,
-      amount,
-      nav,
-    } = req.body;
-    const itemsToProcess = req.body.items || [{ schemeCode, schemeName, amount, nav }];
+    const { otp } = req.body;
+    const userId = req.user.id;
+    const user = await User.findById(userId);
 
-    if (itemsToProcess.length === 0 || !itemsToProcess.every(item => parsePositiveNav(item.nav))) {
-      return res.status(400).json({
-        message: "Live NAV data is unavailable for one or more schemes. Transaction cannot proceed.",
-      });
+    const otpRecord = await OTP.findOne({ email: user.email, action: "FUND_PURCHASE" }).sort({ createdAt: -1 });
+    if (!otpRecord) {
+      return res.status(400).json({ message: "OTP expired or invalid" });
     }
 
-    const user = req.user.id; // from auth middleware
-
-    const sign = razorpay_order_id + "|" + razorpay_payment_id;
-    const expectedSign = crypto
-      .createHmac("sha256", (process.env.RAZORPAY_KEY_SECRET || "").trim())
-      .update(sign.toString())
-      .digest("hex");
-
-    if (razorpay_signature !== expectedSign) {
-      return res.status(400).json({ message: "Invalid signature sent!" });
+    const isMatch = await bcrypt.compare(otp.toString(), otpRecord.otpHash);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Incorrect OTP" });
     }
 
+    const { items: itemsToProcess, totalAmount } = otpRecord.metadata;
+
+    if (user.walletBalance < totalAmount) {
+      return res.status(400).json({ message: "Insufficient wallet balance." });
+    }
+
+    // Deduct wallet balance
+    user.walletBalance -= totalAmount;
+    await user.save();
 
     for (const item of itemsToProcess) {
       const validNav = parsePositiveNav(item.nav);
@@ -76,7 +94,7 @@ export const verifyPayment = async (req, res) => {
       const units = parseFloat((item.amount / validNav).toFixed(4));
       
       const newTransaction = new Transaction({
-        user,
+        user: userId,
         schemeCode: item.schemeCode,
         schemeName: item.schemeName,
         type: "BUY",
@@ -86,8 +104,18 @@ export const verifyPayment = async (req, res) => {
       });
       await newTransaction.save();
 
+      // Wallet Transaction
+      const walletTx = new WalletTransaction({
+        user: userId,
+        type: "FUND_PURCHASE",
+        amount: item.amount,
+        status: "COMPLETED",
+        description: item.schemeName,
+      });
+      await walletTx.save();
+
       // Update or create holding
-      let holding = await Holding.findOne({ user, schemeCode: item.schemeCode });
+      let holding = await Holding.findOne({ user: userId, schemeCode: item.schemeCode });
       if (holding) {
         holding.investedAmount += item.amount;
         holding.units += units;
@@ -95,7 +123,7 @@ export const verifyPayment = async (req, res) => {
         await holding.save();
       } else {
         holding = new Holding({
-          user,
+          user: userId,
           schemeCode: item.schemeCode,
           schemeName: item.schemeName,
           units,
@@ -106,8 +134,11 @@ export const verifyPayment = async (req, res) => {
       }
     }
 
-    res.json({ message: "Payment verified successfully" });
+    // Delete used OTP
+    await OTP.deleteOne({ _id: otpRecord._id });
+
+    res.json({ message: "Purchase successful", balance: user.walletBalance });
   } catch (error) {
-    res.status(500).json({ message: error.message || "Failed to verify payment" });
+    res.status(500).json({ message: error.message || "Failed to verify purchase" });
   }
 };

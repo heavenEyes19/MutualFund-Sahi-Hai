@@ -12,6 +12,14 @@ const userSchema = new mongoose.Schema(
     },
     otp: { type: String, default: null },
     otpExpires: { type: Date, default: null },
+    walletBalance: { type: Number, default: 0 },
+    bankAccounts: [
+      {
+        accountNumber: String,
+        ifsc: String,
+        bankName: String,
+      },
+    ],
   },
   { timestamps: true }
 );

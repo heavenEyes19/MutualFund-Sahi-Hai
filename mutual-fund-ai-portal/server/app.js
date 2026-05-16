@@ -18,6 +18,7 @@ app.use("/uploads", express.static(path.join(process.cwd(), "public", "uploads")
 
 import chatRoutes from "./routes/chatRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
+import walletRoutes from "./routes/walletRoutes.js";
 
 // routes
 app.use("/api/auth", authRoutes); 
@@ -29,6 +30,7 @@ app.use("/api/sips", sipRoutes);
 app.use("/api/kyc", kycRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/payment", paymentRoutes);
+app.use("/api/wallet", walletRoutes);
 
 app.get("/", (req, res) => {
   res.send("API Running");

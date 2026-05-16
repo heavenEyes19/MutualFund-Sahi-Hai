@@ -1,5 +1,7 @@
 import Holding from "../models/Holding.js";
 import Transaction from "../models/Transaction.js";
+import User from "../models/User.js";
+import WalletTransaction from "../models/WalletTransaction.js";
 import KYC from "../models/KYC.js";
 import SIP from "../models/SIP.js";
 import { cacheGet, cacheSet, TTL } from "../utils/cache.js";
@@ -166,6 +168,18 @@ export const sellFund = async (req, res) => {
     } else {
       await holding.save();
     }
+
+    const user = await User.findById(req.user._id);
+    user.walletBalance += amount;
+    await user.save();
+
+    await WalletTransaction.create({
+      user: req.user._id,
+      type: "FUND_SALE",
+      amount,
+      status: "COMPLETED",
+      description: `Sell ${holding.schemeName}`
+    });
 
     res.json({ message: "Fund sold successfully", transaction, amount });
   } catch (error) {

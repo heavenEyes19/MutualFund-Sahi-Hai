@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { ShoppingCart, ArrowRight, Trash2, CreditCard, CheckCircle2, ShieldAlert, Sparkles, Zap, Calendar, Wallet } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useCartStore from '../../store/useCartStore';
-import { createRazorpayOrder, verifyRazorpayPayment, createSIP } from '../../services/portfolio';
+import { createSIP } from '../../services/portfolio';
+import API from '../../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Cart() {
@@ -12,6 +13,9 @@ export default function Cart() {
   const [txLoading, setTxLoading] = useState(false);
   const [txMessage, setTxMessage] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [pendingItems, setPendingItems] = useState([]);
 
   const handleBuySingle = async (item) => {
     await processPurchase([item]);
@@ -41,47 +45,23 @@ export default function Cart() {
         });
       }
 
-      // Process Lumpsum together in one Razorpay order
+      // Process Lumpsum with Wallet OTP
       if (lumpsumItems.length > 0) {
         const totalLumpsumAmount = lumpsumItems.reduce((acc, i) => acc + Number(i.amount), 0);
-        const order = await createRazorpayOrder(totalLumpsumAmount);
         
-        const options = {
-          key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Snsc6Pg1LbIYVH",
-          amount: order.amount,
-          currency: "INR",
-          name: "Mutual Fund Sahi Hai",
-          description: `Execution of ${lumpsumItems.length} Fund Orders`,
-          order_id: order.id,
-          handler: async function (response) {
-            try {
-              await verifyRazorpayPayment({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                items: lumpsumItems.map(item => ({
-                  schemeCode: item.schemeCode,
-                  schemeName: item.schemeName,
-                  amount: item.amount,
-                  nav: item.nav
-                }))
-              });
-              
-              setTxMessage({ type: 'success', text: 'Deployment Successful!' });
-              items.forEach(i => removeFromCart(i.schemeCode));
-              setShowSuccessModal(true);
-            } catch (err) {
-              setTxMessage({ type: 'error', text: "Payment verification failed" });
-            }
-          },
-          theme: { color: "#4f46e5" }
-        };
-        const rzp1 = new window.Razorpay(options);
-        rzp1.on('payment.failed', function (response){
-          setTxMessage({ type: 'error', text: response.error.description });
-          setTxLoading(false);
+        await API.post('/payment/create-order', {
+          amount: totalLumpsumAmount,
+          items: lumpsumItems.map(item => ({
+            schemeCode: item.schemeCode,
+            schemeName: item.schemeName,
+            amount: item.amount,
+            nav: item.nav
+          }))
         });
-        rzp1.open();
+
+        setPendingItems(lumpsumItems);
+        setShowOtpModal(true);
+        setTxLoading(false);
         return; 
       }
 
@@ -89,9 +69,49 @@ export default function Cart() {
       items.forEach(i => removeFromCart(i.schemeCode));
       setShowSuccessModal(true);
     } catch (err) {
-      setTxMessage({ type: 'error', text: err.response?.data?.message || 'Failed to process deployment.' });
+      if (err.response?.data?.message?.toLowerCase().includes("insufficient wallet balance")) {
+        setTxMessage({ type: 'error', text: "Insufficient balance. Please top up your wallet." });
+      } else {
+        setTxMessage({ type: 'error', text: err.response?.data?.message || 'Failed to process deployment.' });
+      }
     } finally {
       setTxLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    setTxLoading(true);
+    setTxMessage(null);
+    try {
+      await API.post('/payment/verify-payment', { otp });
+      setShowOtpModal(false);
+      setOtp('');
+      setTxMessage({ type: 'success', text: 'Deployment Successful!' });
+      pendingItems.forEach(i => removeFromCart(i.schemeCode));
+      setShowSuccessModal(true);
+    } catch (err) {
+      setTxMessage({ type: 'error', text: err.response?.data?.message || 'Failed to verify OTP.' });
+    } finally {
+      setTxLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    try {
+      setTxMessage(null);
+      const totalLumpsumAmount = pendingItems.reduce((acc, i) => acc + Number(i.amount), 0);
+      await API.post('/payment/create-order', {
+        amount: totalLumpsumAmount,
+        items: pendingItems.map(item => ({
+          schemeCode: item.schemeCode,
+          schemeName: item.schemeName,
+          amount: item.amount,
+          nav: item.nav
+        }))
+      });
+      setTxMessage({ type: 'success', text: 'OTP resent to your email!' });
+    } catch (err) {
+      setTxMessage({ type: 'error', text: err.response?.data?.message || 'Failed to resend OTP.' });
     }
   };
 
@@ -279,6 +299,56 @@ export default function Cart() {
               >
                 Go to Portfolio
               </button>
+            </motion.div>
+          </div>
+        )}
+
+        {showOtpModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{opacity: 0}} animate={{opacity: 1}} className="absolute inset-0 bg-slate-950/90 backdrop-blur-xl" />
+            <motion.div initial={{scale: 0.9, opacity: 0}} animate={{scale: 1, opacity: 1}} className="relative bg-white dark:bg-slate-900 rounded-[30px] p-8 max-w-sm w-full shadow-2xl">
+              <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Verify Purchase</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">Enter the 6-digit OTP sent to your email to confirm the debit from your wallet.</p>
+              
+              {txMessage && (
+                <div className={`p-3 rounded-lg text-xs font-bold mb-4 ${txMessage.type === 'error' ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                  {txMessage.text}
+                </div>
+              )}
+
+              <input 
+                type="text" 
+                maxLength="6"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                className="w-full bg-slate-100 dark:bg-slate-800 border border-transparent rounded-xl p-4 text-center text-2xl font-mono tracking-[0.5em] focus:outline-none focus:border-indigo-500 mb-4"
+                placeholder="••••••"
+              />
+
+              <div className="flex gap-3 mt-6">
+                <button 
+                  onClick={() => { setShowOtpModal(false); setOtp(''); setPendingItems([]); }}
+                  className="flex-1 py-3 text-slate-500 font-bold text-sm bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleVerifyOtp}
+                  disabled={txLoading || otp.length < 6}
+                  className="flex-1 py-3 bg-indigo-600 text-white font-bold text-sm rounded-xl hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {txLoading ? "Verifying..." : "Verify & Pay"}
+                </button>
+              </div>
+
+              <div className="mt-4 text-center">
+                <button 
+                  onClick={handleResendOtp}
+                  className="text-xs font-bold text-indigo-500 hover:text-indigo-600"
+                >
+                  Resend OTP
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

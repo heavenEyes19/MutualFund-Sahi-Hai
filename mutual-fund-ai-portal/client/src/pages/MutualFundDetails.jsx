@@ -7,7 +7,8 @@ import {
 } from "recharts";
 
 import { getMutualFundDetails, searchMutualFunds } from "../services/mutualFunds";
-import { getPortfolio, sellFund, createSIP, createRazorpayOrder, verifyRazorpayPayment } from "../services/portfolio";
+import { getPortfolio, sellFund, createSIP } from "../services/portfolio";
+import API from "../services/api";
 import { useKycStatus } from "../hooks/useKycStatus";
 import useCartStore from "../store/useCartStore";
 
@@ -88,6 +89,9 @@ export default function MutualFundDetails() {
   const [txMessage, setTxMessage] = useState(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showKycModal, setShowKycModal] = useState(false);
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [pendingPayload, setPendingPayload] = useState(null);
 
   const [investTab, setInvestTab] = useState('SIP');
   const [investAmount, setInvestAmount] = useState('');
@@ -267,36 +271,21 @@ export default function MutualFundDetails() {
           setShowTxModal(false);
           setShowSuccessModal(true);
         } else {
-          const order = await createRazorpayOrder(Number(txAmount));
-          const options = {
-            key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_Snsc6Pg1LbIYVH",
-            amount: order.amount,
-            currency: "INR",
-            name: "Mutual Fund Sahi Hai",
-            description: `Buy ${payload.schemeName}`,
-            order_id: order.id,
-            handler: async function (response) {
-              try {
-                await verifyRazorpayPayment({
-                  razorpay_order_id: response.razorpay_order_id,
-                  razorpay_payment_id: response.razorpay_payment_id,
-                  razorpay_signature: response.razorpay_signature,
-                  ...payload
-                });
-                setTxMessage({ type: 'success', text: `Successfully bought ${payload.schemeName}` });
-                setShowTxModal(false);
-                setShowSuccessModal(true);
-                const data = await getPortfolio();
-                if (data && data.holdings) setPortfolioHoldings(data.holdings);
-              } catch (err) {
-                setTxMessage({ type: 'error', text: "Payment verification failed" });
-              }
-            },
-            theme: { color: "#4f46e5" }
-          };
-          const rzp1 = new window.Razorpay(options);
-          rzp1.on('payment.failed', (response) => setTxMessage({ type: 'error', text: response.error.description }));
-          rzp1.open();
+          try {
+            await API.post('/payment/create-order', {
+              amount: payload.amount,
+              items: [payload]
+            });
+            setPendingPayload(payload);
+            setShowTxModal(false);
+            setShowOtpModal(true);
+          } catch (err) {
+            if (err.response?.data?.message?.toLowerCase().includes("insufficient wallet balance")) {
+              setTxMessage({ type: 'error', text: "Insufficient balance. Please top up your wallet." });
+            } else {
+              throw err;
+            }
+          }
         }
       } else {
         await sellFund({ ...payload, unitsToSell: Number(txAmount) / latestNav, currentNav: latestNav });
@@ -313,6 +302,37 @@ export default function MutualFundDetails() {
       setTxMessage({ type: 'error', text: err.response?.data?.message || `Failed to ${txType} fund.` });
     } finally {
       setTxLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    setTxLoading(true);
+    setTxMessage(null);
+    try {
+      await API.post('/payment/verify-payment', { otp });
+      setShowOtpModal(false);
+      setOtp('');
+      setTxMessage({ type: 'success', text: `Successfully bought ${pendingPayload.schemeName}` });
+      setShowSuccessModal(true);
+      const data = await getPortfolio();
+      if (data && data.holdings) setPortfolioHoldings(data.holdings);
+    } catch (err) {
+      setTxMessage({ type: 'error', text: err.response?.data?.message || 'Failed to verify OTP.' });
+    } finally {
+      setTxLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    try {
+      setTxMessage(null);
+      await API.post('/payment/create-order', {
+        amount: pendingPayload.amount,
+        items: [pendingPayload]
+      });
+      setTxMessage({ type: 'success', text: 'OTP resent to your email!' });
+    } catch (err) {
+      setTxMessage({ type: 'error', text: err.response?.data?.message || 'Failed to resend OTP.' });
     }
   };
 
@@ -824,6 +844,56 @@ export default function MutualFundDetails() {
               <div className="flex flex-col gap-3">
                 <button onClick={() => navigate('/dashboard-area/kyc')} className="w-full py-4 bg-indigo-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl shadow-indigo-500/20">Verify Identity Now</button>
                 <button onClick={() => setShowKycModal(false)} className="w-full py-4 text-slate-400 font-black text-[10px] uppercase tracking-widest hover:text-slate-600 transition-colors">I'll do it later</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {showOtpModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{opacity: 0}} animate={{opacity: 1}} className="absolute inset-0 bg-slate-950/90 backdrop-blur-xl" />
+            <motion.div initial={{scale: 0.9, opacity: 0}} animate={{scale: 1, opacity: 1}} className="relative bg-white dark:bg-slate-900 rounded-[30px] p-8 max-w-sm w-full shadow-2xl">
+              <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Verify Purchase</h3>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">Enter the 6-digit OTP sent to your email to confirm the debit from your wallet.</p>
+              
+              {txMessage && (
+                <div className={`p-3 rounded-lg text-xs font-bold mb-4 ${txMessage.type === 'error' ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                  {txMessage.text}
+                </div>
+              )}
+
+              <input 
+                type="text" 
+                maxLength="6"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                className="w-full bg-slate-100 dark:bg-slate-800 border border-transparent rounded-xl p-4 text-center text-2xl font-mono tracking-[0.5em] focus:outline-none focus:border-indigo-500 mb-4"
+                placeholder="••••••"
+              />
+
+              <div className="flex gap-3 mt-6">
+                <button 
+                  onClick={() => { setShowOtpModal(false); setOtp(''); setPendingPayload(null); }}
+                  className="flex-1 py-3 text-slate-500 font-bold text-sm bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleVerifyOtp}
+                  disabled={txLoading || otp.length < 6}
+                  className="flex-1 py-3 bg-indigo-600 text-white font-bold text-sm rounded-xl hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {txLoading ? "Verifying..." : "Verify & Pay"}
+                </button>
+              </div>
+
+              <div className="mt-4 text-center">
+                <button 
+                  onClick={handleResendOtp}
+                  className="text-xs font-bold text-indigo-500 hover:text-indigo-600"
+                >
+                  Resend OTP
+                </button>
               </div>
             </motion.div>
           </div>
