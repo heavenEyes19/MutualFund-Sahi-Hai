@@ -314,7 +314,7 @@ const ChatWidget = () => {
         <div className={`transition-all duration-500 ease-out origin-bottom-right ${
           isOpen && !isExpanded ? 'opacity-100 scale-100 translate-y-0 pointer-events-auto' : 'opacity-0 scale-90 translate-y-4 pointer-events-none'
         }`}>
-          <div className="w-[380px] flex flex-col rounded-[28px] overflow-hidden shadow-2xl border border-white/60 dark:border-white/10 bg-white/85 dark:bg-[#111]/90 backdrop-blur-xl" style={{ height: '560px' }}>
+          <div className="w-[380px] flex flex-col rounded-[28px] overflow-hidden shadow-2xl border border-white/60 dark:border-white/10 bg-white/85 dark:bg-[#111]/90 backdrop-blur-xl h-[560px] max-h-[calc(100vh-240px)]">
 
             {/* Compact Header */}
             <div className="flex items-center justify-between px-5 py-4 bg-white/70 dark:bg-[#1A1A1A]/80 backdrop-blur-md border-b border-white/50 dark:border-[#2A2A2A] shrink-0">

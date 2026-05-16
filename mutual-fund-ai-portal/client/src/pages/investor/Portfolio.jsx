@@ -3,15 +3,13 @@ import API from '../../services/api';
 import {
   PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend
 } from 'recharts';
-import {
-  TrendingUp, TrendingDown, PlusCircle, MinusCircle, Wallet, Activity, BarChart3
-} from 'lucide-react';
-import { motion } from 'framer-motion';
+import { TrendingUp, TrendingDown, PlusCircle, MinusCircle, Wallet, Activity, BarChart3, ChevronRight } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import KycGuard from '../../components/layout/KycGuard';
 import { useKycStatus } from '../../hooks/useKycStatus';
 import { sellFund } from '../../services/portfolio';
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#f43f5e', '#8b5cf6'];
 
 const getFundCategory = (schemeName) => {
   if (!schemeName) return 'Equity';
@@ -23,10 +21,10 @@ const getFundCategory = (schemeName) => {
 
 const getCategoryBadgeStyles = (category) => {
   switch (category) {
-    case 'Equity': return 'bg-[#0088FE]/10 text-[#0088FE] dark:bg-[#0088FE]/20';
-    case 'Debt': return 'bg-[#00C49F]/10 text-[#00C49F] dark:bg-[#00C49F]/20';
-    case 'Hybrid': return 'bg-[#FFBB28]/10 text-[#FFBB28] dark:bg-[#FFBB28]/20 text-[10px]';
-    default: return 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400';
+    case 'Equity': return 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400';
+    case 'Debt': return 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400';
+    case 'Hybrid': return 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400';
+    default: return 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400';
   }
 };
 
@@ -50,22 +48,11 @@ const Portfolio = () => {
   const [sellingFundId, setSellingFundId] = useState(null);
 
   const handleSellAll = async (fund) => {
-    if (!fund.currentNav) {
-      alert("Cannot sell: Current NAV is unavailable.");
-      return;
-    }
+    if (!fund.currentNav) { alert("Cannot sell: Current NAV is unavailable."); return; }
     if (!window.confirm(`Are you sure you want to sell all units of ${fund.schemeName}?`)) return;
-    
     setSellingFundId(fund.schemeCode);
     try {
-      await sellFund({
-        schemeCode: fund.schemeCode,
-        schemeName: fund.schemeName,
-        amount: fund.currentValue,
-        nav: fund.currentNav,
-        unitsToSell: fund.units,
-        currentNav: fund.currentNav
-      });
+      await sellFund({ schemeCode: fund.schemeCode, schemeName: fund.schemeName, amount: fund.currentValue, nav: fund.currentNav, unitsToSell: fund.units, currentNav: fund.currentNav });
       fetchPortfolio();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to sell fund.');
@@ -74,15 +61,12 @@ const Portfolio = () => {
     }
   };
 
-  useEffect(() => {
-    setTimeout(() => fetchPortfolio(), 0);
-  }, []);
+  useEffect(() => { fetchPortfolio(); }, []);
 
   const overview = data?.overview || {};
   const holdings = data?.holdings || [];
   const isPositiveReturn = (overview?.totalReturns || 0) >= 0;
 
-  // Dynamic data for charts
   const assetAllocation = React.useMemo(() => {
     if (!holdings || holdings.length === 0) return [];
     const alloc = { Equity: 0, Debt: 0, Hybrid: 0 };
@@ -90,8 +74,7 @@ const Portfolio = () => {
     holdings.forEach(h => {
       const cat = getFundCategory(h.schemeName);
       const val = h.currentValue || 0;
-      if (alloc[cat] !== undefined) alloc[cat] += val;
-      else alloc.Equity += val; // fallback
+      if (alloc[cat] !== undefined) alloc[cat] += val; else alloc.Equity += val;
       total += val;
     });
     if (total === 0) return [];
@@ -102,7 +85,6 @@ const Portfolio = () => {
     ].filter(a => a.value > 0);
   }, [holdings]);
 
-  // Mock data for Growth chart (Backend does not track historical portfolio value yet)
   const growthData = [
     { name: 'Jan', invested: 10000, value: 10500 },
     { name: 'Feb', invested: 20000, value: 21500 },
@@ -112,205 +94,231 @@ const Portfolio = () => {
     { name: 'Jun', invested: overview.totalInvested || 60000, value: overview.currentValue || 68000 },
   ];
 
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+  if (loading) return (
+    <div className="flex h-[60vh] items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <div className="w-10 h-10 border-4 border-indigo-200 dark:border-indigo-900 border-t-indigo-600 rounded-full animate-spin" />
+        <p className="text-xs text-slate-500 font-black uppercase tracking-widest">Crunching Numbers…</p>
       </div>
-    );
-  }
+    </div>
+  );
 
   return (
     <KycGuard kycStatus={kycStatus} kycRejectionReason={kycRejectionReason} loading={kycLoading}>
-    <div className="p-6 md:p-8 bg-gray-50 dark:bg-gray-950 min-h-screen text-gray-900 dark:text-gray-100 font-sans">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-600">
-            Your Portfolio
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">Real-time insights and analytics for your investments.</p>
-        </div>
-        <div className="flex space-x-4">
-          <button className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow transition-all transform hover:scale-105">
-            <PlusCircle size={18} />
-            <span>Invest More</span>
-          </button>
-          <button className="flex items-center space-x-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-750 rounded-lg shadow transition-all transform hover:scale-105">
-            <MinusCircle size={18} />
-            <span>Redeem</span>
-          </button>
-        </div>
-      </div>
+      <div className="w-full transition-colors duration-300 font-inter">
 
-      {error && (
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded shadow-sm">
-          <p>{error}</p>
-        </div>
-      )}
-
-      {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card title="Total Invested" value={overview.totalInvested} icon={<Wallet />} />
-        <Card title="Current Value" value={overview.currentValue} icon={<Activity />} isHighlight />
-        <Card
-          title="Total Returns"
-          value={overview.totalReturns}
-          icon={isPositiveReturn ? <TrendingUp /> : <TrendingDown />}
-          isPositive={isPositiveReturn}
-          subtitle={`${overview.totalReturnsPercent?.toFixed(2)}%`}
-        />
-        <Card title="Active Holdings" value={holdings.length} icon={<BarChart3 />} textOnly />
-      </div>
-
-      {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-        <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow border border-gray-100 dark:border-gray-700">
-          <h3 className="text-lg font-semibold mb-6">Growth Over Time</h3>
-          <div className="h-72 w-full">
-            <ResponsiveContainer>
-              <LineChart data={growthData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" opacity={0.2} />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6B7280' }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6B7280' }} tickFormatter={(value) => `₹${value / 1000}k`} />
-                <RechartsTooltip
-                  contentStyle={{ backgroundColor: '#1F2937', borderColor: '#374151', color: '#fff', borderRadius: '8px' }}
-                  itemStyle={{ color: '#E5E7EB' }}
-                />
-                <Legend />
-                <Line type="monotone" dataKey="invested" name="Invested" stroke="#6366F1" strokeWidth={3} dot={false} />
-                <Line type="monotone" dataKey="value" name="Current Value" stroke="#10B981" strokeWidth={3} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tighter mb-2">Portfolio Engine</h1>
+            <p className="text-slate-500 dark:text-slate-400 font-medium">Real-time performance tracking and asset distribution.</p>
+          </div>
+          <div className="flex gap-3 w-full sm:w-auto">
+            <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 bg-indigo-600 text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-indigo-500/20 hover:-translate-y-1 active:translate-y-0 transition-all">
+              <PlusCircle size={18} /> Invest
+            </button>
+            <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all">
+              <MinusCircle size={18} /> Redeem
+            </button>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow border border-gray-100 dark:border-gray-700 flex flex-col items-center">
-          <h3 className="text-lg font-semibold mb-2 self-start">Asset Allocation</h3>
-          <div className="h-64 w-full mt-4">
-            <ResponsiveContainer>
-              <PieChart>
-                <Pie
-                  data={assetAllocation}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {assetAllocation.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <RechartsTooltip />
-                <Legend verticalAlign="bottom" height={36} />
-              </PieChart>
-            </ResponsiveContainer>
+        {error && (
+          <div className="bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 text-rose-700 dark:text-rose-400 p-4 mb-8 rounded-2xl text-xs font-bold">{error}</div>
+        )}
+
+        {/* Overview Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
+          <Card title="Total Invested" value={overview.totalInvested} icon={<Wallet size={20} />} iconClass="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400" />
+          <Card title="Market Value" value={overview.currentValue} icon={<Activity size={20} />} isHighlight />
+          <Card title="Net Returns" value={overview.totalReturns} icon={isPositiveReturn ? <TrendingUp size={20} /> : <TrendingDown size={20} />} isPositive={isPositiveReturn} subtitle={`${overview.totalReturnsPercent?.toFixed(2)}% ALL TIME`} />
+          <Card title="Active Holdings" value={holdings.length} icon={<BarChart3 size={20} />} iconClass="bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400" textOnly />
+        </div>
+
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-10">
+          <div className="lg:col-span-2 ui-card p-6 sm:p-8 dark:bg-slate-900/40">
+            <h3 className="text-[12px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-8">Equity Growth Curve</h3>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer>
+                <LineChart data={growthData}>
+                  <defs>
+                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/>
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(226, 232, 240, 0.1)" />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }} 
+                    dy={10}
+                  />
+                  <YAxis 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }} 
+                    tickFormatter={(v) => `₹${v / 1000}k`} 
+                  />
+                  <RechartsTooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'rgba(15, 23, 42, 0.9)', 
+                      border: 'none', 
+                      borderRadius: '16px', 
+                      boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)',
+                      backdropFilter: 'blur(8px)'
+                    }} 
+                    itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
+                    labelStyle={{ color: '#6366f1', marginBottom: '4px', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em' }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="invested" 
+                    name="Invested" 
+                    stroke="#4f46e5" 
+                    strokeWidth={4} 
+                    dot={false} 
+                    activeDot={{ r: 6, fill: '#4f46e5', strokeWidth: 0 }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="value" 
+                    name="Market Value" 
+                    stroke="#10b981" 
+                    strokeWidth={4} 
+                    dot={false} 
+                    activeDot={{ r: 6, fill: '#10b981', strokeWidth: 0 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+          
+          <div className="ui-card p-6 sm:p-8 dark:bg-slate-900/40 flex flex-col">
+            <h3 className="text-[12px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-8">Asset Allocation</h3>
+            <div className="flex-1 flex flex-col justify-center min-h-[260px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie 
+                    data={assetAllocation} 
+                    cx="50%" 
+                    cy="50%" 
+                    innerRadius={70} 
+                    outerRadius={95} 
+                    paddingAngle={8} 
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {assetAllocation.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip 
+                    contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', border: 'none', borderRadius: '12px' }}
+                    itemStyle={{ color: '#fff', fontSize: '11px', fontWeight: 'bold' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="grid grid-cols-2 gap-4 mt-6">
+                {assetAllocation.map((a, i) => (
+                  <div key={a.name} className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{a.name}</span>
+                    <span className="text-[11px] font-black text-slate-900 dark:text-white ml-auto">{a.value}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Holdings Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow overflow-hidden border border-gray-100 dark:border-gray-700">
-        <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
-          <h3 className="text-lg font-semibold">Current Holdings</h3>
-          <button className="text-sm text-indigo-600 dark:text-indigo-400 font-medium hover:underline">View All</button>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-gray-50 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400 text-sm uppercase tracking-wider">
-                <th className="p-4 font-medium">Fund Name</th>
-                <th className="p-4 font-medium">Units</th>
-                <th className="p-4 font-medium">Avg NAV</th>
-                <th className="p-4 font-medium">Current NAV</th>
-                <th className="p-4 font-medium">Current Value</th>
-                <th className="p-4 font-medium">Gain/Loss</th>
-                <th className="p-4 font-medium text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {holdings.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="p-8 text-center text-gray-500">No holdings found. Start investing!</td>
+        {/* Holdings Table */}
+        <div className="ui-card overflow-hidden dark:bg-slate-900/40">
+          <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+            <h3 className="text-[14px] font-black text-slate-900 dark:text-white uppercase tracking-wider">Current Holdings</h3>
+            <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+               <ChevronRight size={18} />
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50/50 dark:bg-slate-800/30 text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] border-b border-slate-100 dark:border-slate-800">
+                  <th className="px-6 py-4">Fund Scheme</th>
+                  <th className="px-6 py-4">Units Owned</th>
+                  <th className="px-6 py-4">Avg Cost</th>
+                  <th className="px-6 py-4">Market NAV</th>
+                  <th className="px-6 py-4">Invested Value</th>
+                  <th className="px-6 py-4">Gain/Loss</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
-              ) : (
-                holdings.map((fund, idx) => {
-                  const category = getFundCategory(fund.schemeName);
-                  return (
-                  <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                    <td className="p-4">
-                      <div className="font-medium text-gray-900 dark:text-gray-100">{fund.schemeName}</div>
-                      <span className={`inline-block mt-1.5 px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider ${getCategoryBadgeStyles(category)}`}>
-                        {category}
-                      </span>
-                    </td>
-                    <td className="p-4 text-gray-600 dark:text-gray-400">{fund.units.toFixed(2)}</td>
-                    <td className="p-4 text-gray-600 dark:text-gray-400">₹{fund.avgNav.toFixed(2)}</td>
-                    <td className="p-4 text-gray-600 dark:text-gray-400">₹{fund.currentNav?.toFixed(2) || '-'}</td>
-                    <td className="p-4 font-semibold text-gray-900 dark:text-gray-100">₹{fund.currentValue?.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</td>
-                    <td className="p-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center w-max ${fund.gainLossPercent >= 0 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
-                        {fund.gainLossPercent >= 0 ? <TrendingUp size={12} className="mr-1" /> : <TrendingDown size={12} className="mr-1" />}
-                        {Math.abs(fund.gainLossPercent).toFixed(2)}%
-                      </span>
-                    </td>
-                    <td className="p-4 text-right">
-                      <button
-                        onClick={() => handleSellAll(fund)}
-                        disabled={sellingFundId === fund.schemeCode}
-                        className="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:text-red-400 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
-                      >
-                        {sellingFundId === fund.schemeCode ? 'Selling...' : 'Sell All'}
-                      </button>
-                    </td>
-                  </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+                {holdings.length === 0 ? (
+                  <tr><td colSpan="7" className="px-6 py-16 text-center text-slate-400 font-bold uppercase tracking-widest text-xs">No active holdings detected.</td></tr>
+                ) : (
+                  holdings.map((fund, idx) => {
+                    const category = getFundCategory(fund.schemeName);
+                    return (
+                      <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group">
+                        <td className="px-6 py-5">
+                          <p className="font-black text-slate-900 dark:text-white text-[13px] leading-tight mb-1.5">{fund.schemeName}</p>
+                          <span className={`inline-block px-2 py-0.5 rounded-lg text-[9px] uppercase font-black tracking-widest ${getCategoryBadgeStyles(category)}`}>{category}</span>
+                        </td>
+                        <td className="px-6 py-5 text-sm font-bold text-slate-600 dark:text-slate-400 tabular-nums">{fund.units.toFixed(3)}</td>
+                        <td className="px-6 py-5 text-sm font-bold text-slate-600 dark:text-slate-400 tabular-nums">₹{fund.avgNav.toFixed(2)}</td>
+                        <td className="px-6 py-5 text-sm font-bold text-slate-600 dark:text-slate-400 tabular-nums">₹{fund.currentNav?.toFixed(2) || '-'}</td>
+                        <td className="px-6 py-5 text-sm font-black text-slate-900 dark:text-white tabular-nums">₹{fund.currentValue?.toLocaleString('en-IN')}</td>
+                        <td className="px-6 py-5">
+                          <div className={`flex items-center gap-1.5 font-black text-xs ${fund.gainLossPercent >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
+                            {fund.gainLossPercent >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                            {Math.abs(fund.gainLossPercent).toFixed(2)}%
+                          </div>
+                        </td>
+                        <td className="px-6 py-5 text-right">
+                          <button 
+                            onClick={() => handleSellAll(fund)} 
+                            disabled={sellingFundId === fund.schemeCode}
+                            className="px-4 py-2 bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-600 hover:text-white text-rose-600 dark:text-rose-400 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-50"
+                          >
+                            {sellingFundId === fund.schemeCode ? 'Processing…' : 'Redeem All'}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
-    </div>
     </KycGuard>
   );
 };
 
-const Card = ({ title, value, icon, isHighlight, isPositive, subtitle, textOnly }) => {
-  return (
-    <motion.div
-      whileHover={{ y: -5 }}
-      className={`p-6 rounded-2xl shadow-sm border ${isHighlight
-        ? 'bg-gradient-to-br from-indigo-600 to-purple-700 text-white border-transparent'
-        : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700'
-        }`}
-    >
-      <div className="flex justify-between items-start">
-        <div>
-          <p className={`text-sm font-medium mb-1 ${isHighlight ? 'text-indigo-100' : 'text-gray-500 dark:text-gray-400'}`}>
-            {title}
-          </p>
-          <h4 className={`text-3xl font-bold tracking-tight ${isHighlight ? 'text-white' : 'text-gray-900 dark:text-white'
-            }`}>
-            {textOnly ? value : `₹${(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`}
-          </h4>
-          {subtitle && (
-            <p className={`text-sm mt-2 font-medium flex items-center ${isPositive ? 'text-emerald-500 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'
-              }`}>
-              {isPositive ? '+' : ''}{subtitle}
-            </p>
-          )}
-        </div>
-        <div className={`p-3 rounded-xl ${isHighlight
-          ? 'bg-white/20 backdrop-blur-md'
-          : 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400'
-          }`}>
-          {icon}
-        </div>
+const Card = ({ title, value, icon, iconClass, isHighlight, isPositive, subtitle, textOnly }) => (
+  <motion.div 
+    whileHover={{ y: -4, scale: 1.02 }}
+    className={`p-6 rounded-[28px] border transition-all ${isHighlight
+      ? 'bg-gradient-to-br from-indigo-600 to-violet-700 border-transparent text-white shadow-2xl shadow-indigo-500/30'
+      : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-xl hover:border-indigo-500/20'}`}
+  >
+    <div className="flex justify-between items-start mb-6">
+      <p className={`text-[10px] font-black uppercase tracking-[0.2em] ${isHighlight ? 'text-indigo-100' : 'text-slate-400 dark:text-slate-500'}`}>{title}</p>
+      <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shadow-inner ${isHighlight ? 'bg-white/10 border border-white/20' : (iconClass || 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400')}`}>{icon}</div>
+    </div>
+    <p className={`text-2xl sm:text-3xl font-black tracking-tighter ${isHighlight ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
+      {textOnly ? value : `₹${(value || 0).toLocaleString('en-IN')}`}
+    </p>
+    {subtitle && (
+      <div className={`inline-flex items-center gap-1.5 mt-3 px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${isHighlight ? 'bg-white/10 text-white' : (isPositive ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-500/10 text-rose-500')}`}>
+         {isPositive ? '+' : ''}{subtitle}
       </div>
-    </motion.div>
-  );
-};
+    )}
+  </motion.div>
+);
 
 export default Portfolio;

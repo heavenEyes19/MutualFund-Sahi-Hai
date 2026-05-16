@@ -1,233 +1,363 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { Search, Bell, ShoppingCart, MoreHorizontal, Moon, Sun, LogOut, User, FileCheck } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { 
+  Menu, X, Bell, User, LogOut, ChevronDown, Search, 
+  TrendingUp, Wallet, ShieldCheck, Moon, Sun, ShoppingCart, MessageCircle
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import useAuthStore from '../../store/useAuthStore';
 import useCartStore from '../../store/useCartStore';
 
-export default function Navbar({ isDarkMode, onDarkModeToggle }) {
+const Navbar = ({ isDarkMode, onDarkModeToggle }) => {
   const { user, logout } = useAuthStore();
   const { cartItems } = useCartStore();
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchQuery, setSearchQuery] = useState('');
+  
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  const menuRef = useRef(null);
+  const notifRef = useRef(null);
 
-  // Keyboard shortcut for search
+  // Close menus on click outside
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        document.getElementById('nav-search')?.focus();
-      }
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) setIsMenuOpen(false);
+      if (notifRef.current && !notifRef.current.contains(event.target)) setIsNotificationsOpen(false);
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/dashboard-area/mutual-funds?search=${encodeURIComponent(searchQuery)}`);
-    }
-  };
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
-  const investorTabs = [
-    { name: 'Explore', path: '/dashboard-area/explore' },
-    { name: 'Portfolio', path: '/dashboard-area/portfolio' },
-    { name: 'SIPs', path: '/dashboard-area/sips' },
-    { name: 'Help & Support', path: '/dashboard-area/support' },
-  ];
-
-  const adminTabs = [
-    { name: 'Analytics', path: '/dashboard-area/analytics' },
-    { name: 'KYC Management', path: '/dashboard-area/kyc-management' },
-    { name: 'Fund Master', path: '/dashboard-area/fund-master' },
-    { name: 'Support', path: '/dashboard-area/support' },
-    { name: 'Settings', path: '/dashboard-area/settings' },
-  ];
-
-  const tabs = user?.role === 'admin' ? adminTabs : investorTabs;
-
-  const getTabClass = (path) => {
-    const isActive = location.pathname.includes(path);
-    return isActive
-      ? "bg-[#2A2A2A] dark:bg-[#EAEAEA] text-white dark:text-[#111] font-medium border-b-2 border-[#549E82] rounded-t-xl rounded-b-sm"
-      : "text-slate-400 dark:text-slate-500 font-medium hover:text-[#333] dark:hover:text-[#CCC] hover:bg-black/5 dark:hover:bg-white/5 rounded-xl border border-transparent";
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/dashboard-area/mutual-funds?q=${encodeURIComponent(searchQuery)}`);
+      setSearchQuery('');
+      setIsMobileNavOpen(false);
+    }
   };
 
-  return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-[#FAFAF7] dark:bg-[#111111] border-b border-[#EAE7DF] dark:border-[#333]">
-      <div className="max-w-7xl mx-auto px-4 lg:px-8">
-        
-        {/* TOP ROW: Logo, Search, Action Icons */}
-        <div className="flex items-center justify-between h-20 gap-4">
-          
-          {/* Logo Area */}
-          <div 
-            onClick={() => navigate(user?.role === 'admin' ? '/dashboard-area/analytics' : '/dashboard-area/explore')}
-            className="flex items-center gap-4 cursor-pointer group"
-          >
-            {/* Minimalist Logo Icon */}
-            <div className="w-12 h-12 bg-[#4A7D69] rounded-2xl flex items-center justify-center relative overflow-hidden shrink-0">
-              {/* White Triangle */}
-              <div className="absolute bottom-2 w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-b-[20px] border-b-white/90"></div>
-              <div className="absolute bottom-2 w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-b-[10px] border-b-[#4A7D69]"></div>
-              {/* Orange Dot */}
-              <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-[#DE7748] rounded-full border border-white/20 shadow-[0_0_8px_rgba(222,119,72,0.6)]"></div>
-            </div>
+  const isActiveTab = (path) => location.pathname === path;
 
-            {/* Typography */}
-            <div className="hidden sm:flex flex-col justify-center">
-              <h1 className="font-serif text-xl tracking-tight text-[#2A5C75] dark:text-[#6CB1D4] leading-tight">
-                Mutual Funds <span className="text-[#4A7D69] dark:text-[#5FC09C]">Sahi Hai</span>
-              </h1>
-              <p className="text-[11px] font-sans text-slate-400 dark:text-slate-500 tracking-wide mt-0.5">
-                Smart investing, simplified
-              </p>
+  const tabs = user?.role === 'admin' 
+    ? [
+        { name: 'Analytics', path: '/dashboard-area/analytics' },
+        { name: 'KYC Approvals', path: '/dashboard-area/kyc-management' },
+        { name: 'Fund Master', path: '/dashboard-area/fund-master' },
+        { name: 'Settings', path: '/dashboard-area/settings' },
+        { name: 'Support', path: '/dashboard-area/support' },
+      ]
+    : [
+        { name: 'Explore', path: '/dashboard-area/explore' },
+        { name: 'Portfolio', path: '/dashboard-area/portfolio' },
+        { name: 'SIPs', path: '/dashboard-area/sips' },
+        { name: 'Mutual Funds', path: '/dashboard-area/mutual-funds' },
+        { name: 'Support', path: '/dashboard-area/support' },
+      ];
+
+  return (
+    <header className="sticky top-0 z-[100] w-full bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-900 transition-colors duration-300">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16 sm:h-20 gap-4">
+          
+          {/* Logo */}
+          <div className="flex items-center gap-3 cursor-pointer group shrink-0" onClick={() => navigate(user?.role === 'admin' ? '/dashboard-area/analytics' : '/dashboard-area/explore')}>
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 group-hover:scale-110 transition-transform">
+              <TrendingUp size={20} />
+            </div>
+            <div className="hidden xs:block">
+              <p className="font-bold text-slate-900 dark:text-white text-[14px] sm:text-[15px] tracking-tight leading-none">Mutual Funds</p>
+              <p className="text-[10px] sm:text-[11px] text-indigo-500 font-bold tracking-wider uppercase">Sahi Hai</p>
             </div>
           </div>
 
-          {/* Search Bar */}
+          {/* Search Bar (Desktop) */}
           <div className="flex-1 max-w-md hidden md:block">
             <form onSubmit={handleSearchSubmit} className="relative group">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={18} />
-              <input 
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" size={16} />
+              <input
                 id="nav-search"
                 type="text"
-                placeholder="Search funds..."
+                placeholder="Search for funds, categories..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[#EFEDEA] dark:bg-[#1A1A1A] border border-transparent focus:border-[#D1CECB] dark:focus:border-[#333] text-[#333] dark:text-[#EEE] placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm font-medium rounded-2xl py-3 pl-11 pr-12 outline-none transition-all"
+                className="w-full bg-slate-100 dark:bg-slate-900 border border-transparent focus:border-indigo-500/30 focus:bg-white dark:focus:bg-slate-800 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 text-sm rounded-2xl py-2.5 pl-11 pr-16 outline-none transition-all"
               />
-              <div className="absolute right-3.5 top-1/2 -translate-y-1/2 hidden lg:flex items-center gap-0.5 text-slate-400 dark:text-slate-600 font-sans text-xs">
-                <span className="font-sans">⌘</span>
-                <span>K</span>
+              <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1 px-1.5 py-1 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-bold">
+                <span>⌘</span><span>K</span>
               </div>
             </form>
           </div>
 
-          {/* Action Icons */}
-          <div className="flex items-center gap-3 shrink-0">
+          {/* Right actions */}
+          <div className="flex items-center gap-1 sm:gap-2">
             
+            {/* Dark Mode Toggle */}
+            <button
+              onClick={onDarkModeToggle}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-100 dark:bg-slate-900 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 flex items-center justify-center transition-all text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 active:scale-95"
+              aria-label="Toggle dark mode"
+            >
+              {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+
             {/* Notification Bell */}
-            <div className="relative">
-              <button 
+            <div className="relative" ref={notifRef}>
+              <button
                 onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                className="w-11 h-11 rounded-xl bg-[#EFEDEA] dark:bg-[#1A1A1A] hover:bg-[#E5E3E0] dark:hover:bg-[#222] flex items-center justify-center transition-colors border border-transparent"
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-100 dark:bg-slate-900 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 flex items-center justify-center transition-all text-slate-600 dark:text-slate-400 active:scale-95"
               >
-                <Bell size={20} className="text-[#555] dark:text-[#CCC]" />
+                <Bell size={18} />
+                <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 border-2 border-white dark:border-slate-900 rounded-full"></span>
               </button>
-              
-              {/* Mock Notification Dropdown */}
-              {isNotificationsOpen && (
-                <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-[#111] border border-[#EAE7DF] dark:border-[#333] rounded-2xl shadow-xl z-50 p-4">
-                  <h3 className="font-serif text-[#333] dark:text-[#EEE] mb-3">Notifications</h3>
-                  <div className="text-sm text-slate-500 dark:text-slate-400 py-4 text-center border border-dashed border-[#EAE7DF] dark:border-[#333] rounded-xl">
-                    No new notifications
-                  </div>
-                </div>
-              )}
+              <AnimatePresence>
+                {isNotificationsOpen && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute right-0 top-full mt-3 w-80 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 p-4"
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-bold text-slate-900 dark:text-white text-sm">Notifications</h3>
+                      <button className="text-[11px] text-indigo-500 font-bold hover:underline">Mark all read</button>
+                    </div>
+                    <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+                      <div className="w-12 h-12 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center mb-3">
+                        <Bell size={20} className="text-slate-300 dark:text-slate-600" />
+                      </div>
+                      <p className="text-xs font-semibold text-slate-900 dark:text-slate-100">No new alerts</p>
+                      <p className="text-[11px] text-slate-400 mt-1">We'll notify you when something important happens.</p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Cart - Hidden for Admins */}
             {user?.role !== 'admin' && (
               <button 
                 onClick={() => navigate('/dashboard-area/cart')}
-                className="relative w-11 h-11 rounded-xl bg-[#EFEDEA] dark:bg-[#1A1A1A] hover:bg-[#E5E3E0] dark:hover:bg-[#222] flex items-center justify-center transition-colors border border-transparent"
+                className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-100 dark:bg-slate-900 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 flex items-center justify-center transition-all text-slate-600 dark:text-slate-400 active:scale-95"
               >
-                <ShoppingCart size={20} className="text-[#555] dark:text-[#CCC]" />
+                <ShoppingCart size={18} />
                 {cartItems.length > 0 && (
-                  <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-[#D86F45] rounded-full flex items-center justify-center text-[10px] font-bold text-white border-2 border-[#FAFAF7] dark:border-[#111111]">
+                  <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center text-[10px] font-bold text-white border-2 border-white dark:border-slate-950">
                     {cartItems.length}
-                  </div>
+                  </span>
                 )}
               </button>
             )}
 
-            {/* Profile Avatar */}
-            <button className="w-11 h-11 rounded-full bg-[#4A7D69] border-2 border-white dark:border-[#111] shadow-sm flex items-center justify-center text-white font-bold text-sm ml-1 transition-transform hover:scale-105">
-              {user?.name?.charAt(0)?.toUpperCase() || 'A'}
-            </button>
-
-            {/* More Menu (includes dark mode and logout) */}
-            <div className="relative ml-1">
-              <button 
+            {/* Profile Dropdown */}
+            <div className="relative" ref={menuRef}>
+              <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="w-9 h-9 rounded-xl bg-[#2A2A2A] dark:bg-[#EAEAEA] flex items-center justify-center transition-transform hover:scale-105"
+                className="flex items-center gap-2 p-1 rounded-xl border border-transparent hover:border-slate-200 dark:hover:border-slate-800 bg-slate-50 dark:bg-slate-900 transition-all active:scale-95"
               >
-                <MoreHorizontal size={20} className="text-white dark:text-[#111]" />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white font-bold text-xs shadow-sm">
+                  {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+                </div>
+                <div className="hidden lg:block text-left mr-1">
+                  <p className="text-[11px] font-bold text-slate-900 dark:text-white leading-none mb-0.5">{user?.name?.split(' ')[0]}</p>
+                  <p className="text-[9px] text-slate-400 font-medium uppercase tracking-tighter">{user?.role}</p>
+                </div>
+                <ChevronDown size={14} className={`text-slate-400 transition-transform hidden sm:block ${isMenuOpen ? 'rotate-180' : ''}`} />
               </button>
 
-              {isMenuOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-[#111] border border-[#EAE7DF] dark:border-[#333] rounded-2xl shadow-xl z-50 p-2 flex flex-col gap-1">
-                  
-                  <div className="px-3 py-2 mb-1 border-b border-[#EAE7DF] dark:border-[#222]">
-                    <p className="text-sm font-bold text-[#333] dark:text-[#EEE] truncate">{user?.name || 'User'}</p>
-                    <p className="text-[11px] text-slate-400 truncate">{user?.email || 'user@example.com'}</p>
-                  </div>
-
-                  <button 
-                    onClick={onDarkModeToggle}
-                    className="w-full flex items-center justify-between px-3 py-2 text-sm text-[#555] dark:text-[#CCC] hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A] rounded-xl transition-colors"
+              <AnimatePresence>
+                {isMenuOpen && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute right-0 top-full mt-3 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl z-50 p-2"
                   >
-                    <span className="flex items-center gap-2">
-                      {isDarkMode ? <Sun size={16} /> : <Moon size={16} />} 
-                      {isDarkMode ? 'Light Mode' : 'Dark Mode'}
-                    </span>
-                  </button>
+                    <div className="px-3 py-3 mb-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+                      <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{user?.name}</p>
+                      <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">{user?.email}</p>
+                    </div>
 
-                  <button 
-                    onClick={() => { setIsMenuOpen(false); navigate('/dashboard-area/profile'); }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[#555] dark:text-[#CCC] hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A] rounded-xl transition-colors"
-                  >
-                    <User size={16} /> My Profile
-                  </button>
+                    <div className="space-y-0.5">
+                      {tabs.map((tab) => (
+                        <Link 
+                          key={tab.path}
+                          to={tab.path}
+                          onClick={() => setIsMenuOpen(false)}
+                          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-bold transition-all ${
+                            isActiveTab(tab.path)
+                              ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
+                              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                          }`}
+                        >
+                          {tab.name}
+                        </Link>
+                      ))}
+                    </div>
 
-                  <button 
-                    onClick={() => { 
-                      setIsMenuOpen(false); 
-                      navigate(user?.role === 'admin' ? '/dashboard-area/kyc-management' : '/dashboard-area/kyc'); 
-                    }}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-[#555] dark:text-[#CCC] hover:bg-[#F5F5F5] dark:hover:bg-[#1A1A1A] rounded-xl transition-colors"
-                  >
-                    <FileCheck size={16} /> {user?.role === 'admin' ? 'KYC Management' : 'KYC Status'}
-                  </button>
-
-                  <div className="h-px bg-[#EAE7DF] dark:bg-[#222] my-1" />
-
-                  <button 
-                    onClick={handleLogout}
-                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors font-medium"
-                  >
-                    <LogOut size={16} /> Logout
-                  </button>
-                </div>
-              )}
+                    <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-all"
+                      >
+                        <LogOut size={16} />
+                        Logout
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
+
+            {/* Mobile Menu Toggle */}
+            <button
+              onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
+              className="md:hidden w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400"
+            >
+              <Menu size={20} />
+            </button>
 
           </div>
         </div>
-
-        {/* BOTTOM ROW: Tabs */}
-        <div className="flex items-center gap-2 h-12 mt-1 px-1 overflow-x-auto custom-scrollbar">
-          {tabs.map(tab => (
-            <Link 
-              key={tab.name}
-              to={tab.path}
-              className={`px-6 py-2 transition-all whitespace-nowrap ${getTabClass(tab.path)}`}
-            >
-              {tab.name}
-            </Link>
-          ))}
-        </div>
-
       </div>
+
+      {/* Desktop Tabs Bar */}
+      <div className="hidden md:block border-t border-slate-100 dark:border-slate-900 bg-white/50 dark:bg-slate-950/50">
+        <div className="max-w-7xl mx-auto px-8 flex items-center gap-8">
+          {tabs.map(tab => {
+            const active = isActiveTab(tab.path);
+            return (
+              <Link
+                key={tab.name}
+                to={tab.path}
+                className={`relative py-4 text-[11px] font-black uppercase tracking-widest transition-all ${
+                  active 
+                    ? 'text-indigo-600 dark:text-indigo-400' 
+                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                {tab.name}
+                {active && (
+                  <motion.div 
+                    layoutId="activeTab"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-500 rounded-full"
+                  />
+                )}
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Mobile Nav Overlay */}
+      <AnimatePresence>
+        {isMobileNavOpen && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMobileNavOpen(false)}
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] md:hidden"
+            />
+            <motion.div 
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed top-0 right-0 bottom-0 w-[280px] bg-white dark:bg-slate-950 z-[120] shadow-2xl md:hidden flex flex-col"
+            >
+              <div className="p-5 flex items-center justify-between border-b border-slate-100 dark:border-slate-900">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white">
+                    <TrendingUp size={16} />
+                  </div>
+                  <span className="font-bold text-slate-900 dark:text-white text-sm">Navigation</span>
+                </div>
+                <button 
+                  onClick={() => setIsMobileNavOpen(false)}
+                  className="p-2 bg-slate-50 dark:bg-slate-900 rounded-lg text-slate-400"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="p-4 flex flex-col gap-1 overflow-y-auto flex-1">
+                <form onSubmit={handleSearchSubmit} className="relative mb-4">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                  <input
+                    type="text"
+                    placeholder="Search funds..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100 text-sm rounded-xl py-3 pl-11 pr-4 outline-none border border-transparent focus:border-indigo-500/20"
+                  />
+                </form>
+
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 mb-2">Main Menu</p>
+                {tabs.map(tab => {
+                  const active = isActiveTab(tab.path);
+                  return (
+                    <Link
+                      key={tab.name}
+                      to={tab.path}
+                      onClick={() => setIsMobileNavOpen(false)}
+                      className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold transition-all ${
+                        active
+                          ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400'
+                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900'
+                      }`}
+                    >
+                      {tab.name}
+                    </Link>
+                  );
+                })}
+
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 mt-6 mb-2">Account</p>
+                <Link
+                  to="/dashboard-area/profile"
+                  onClick={() => setIsMobileNavOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900"
+                >
+                  <User size={18} className="opacity-50" />
+                  Profile Settings
+                </Link>
+                {user?.role !== 'admin' && (
+                  <Link
+                    to="/dashboard-area/cart"
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900"
+                  >
+                    <ShoppingCart size={18} className="opacity-50" />
+                    Investment Cart
+                  </Link>
+                )}
+              </div>
+
+              <div className="p-4 border-t border-slate-100 dark:border-slate-900 bg-slate-50/50 dark:bg-slate-900/50">
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center justify-center gap-2 py-3.5 bg-rose-50 dark:bg-rose-500/10 text-rose-500 rounded-xl text-sm font-bold transition-all active:scale-95"
+                >
+                  <LogOut size={18} />
+                  Logout
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </header>
   );
-}
+};
+
+export default Navbar;

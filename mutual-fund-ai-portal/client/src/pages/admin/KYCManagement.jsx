@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle2, XCircle, Clock, Search, Eye, AlertCircle } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, Search, Eye, AlertCircle, Shield, ArrowRight, UserCheck, UserX } from 'lucide-react';
 import kycService from '../../services/kycService';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const KYCManagement = () => {
   const [kycs, setKycs] = useState([]);
@@ -8,8 +9,6 @@ const KYCManagement = () => {
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedKyc, setSelectedKyc] = useState(null);
-
-
 
   const fetchKYCs = async () => {
     setIsLoading(true);
@@ -24,14 +23,12 @@ const KYCManagement = () => {
     }
   };
 
-  useEffect(() => {
-    setTimeout(() => fetchKYCs(), 0);
-  }, []);
+  useEffect(() => { fetchKYCs(); }, []);
 
   const handleVerify = async (id, status) => {
     try {
       await kycService.verifyKYC(id, status);
-      await fetchKYCs(); // Refresh list
+      await fetchKYCs();
       if (selectedKyc && selectedKyc._id === id) {
         setSelectedKyc({ ...selectedKyc, status });
       }
@@ -47,123 +44,102 @@ const KYCManagement = () => {
     const email = kyc.userId?.email?.toLowerCase() || '';
     const aadhar = kyc.aadharNumber || '';
     const pan = kyc.panNumber?.toLowerCase() || '';
-    
     return name.includes(search) || email.includes(search) || aadhar.includes(search) || pan.includes(search);
   });
 
   const getStatusBadge = (status) => {
     switch (status) {
       case 'Approved':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400">
-            <CheckCircle2 size={12} /> Approved
-          </span>
-        );
+        return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20"><CheckCircle2 size={12} /> Approved</span>;
       case 'Rejected':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400">
-            <XCircle size={12} /> Rejected
-          </span>
-        );
-      case 'Pending':
+        return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-100 dark:border-rose-500/20"><XCircle size={12} /> Rejected</span>;
       default:
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400">
-            <Clock size={12} /> Pending
-          </span>
-        );
+        return <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20"><Clock size={12} /> Pending</span>;
     }
   };
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
   return (
-    <div className="p-6 lg:p-8 max-w-7xl mx-auto">
-      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            KYC Management
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Review and verify investor KYC submissions.
-          </p>
-        </div>
-      </div>
+    <div className="w-full transition-colors duration-300 font-inter">
+
+      {/* Header */}
+      <header className="mb-10">
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500 mb-2">Compliance & Verification</p>
+        <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tighter">KYC Management</h1>
+        <p className="text-slate-500 dark:text-slate-400 font-medium">Verify investor identities to maintain platform regulatory compliance.</p>
+      </header>
 
       {error && (
-        <div className="mb-6 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-start gap-3 text-red-700 dark:text-red-400">
-          <AlertCircle className="mt-0.5 shrink-0" size={20} />
-          <p className="text-sm">{error}</p>
+        <div className="mb-8 flex items-start gap-4 p-5 bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 rounded-[28px]">
+          <AlertCircle className="text-rose-500 shrink-0 mt-0.5" size={20} />
+          <p className="text-sm font-black text-rose-700 dark:text-rose-400 uppercase tracking-tight">{error}</p>
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* List Section */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden transition-colors">
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900/50">
-              <div className="relative w-full max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+        {/* ── List ── */}
+        <div className="lg:col-span-7 xl:col-span-8">
+          <div className="ui-card overflow-hidden dark:bg-slate-900/40">
+            {/* Search bar */}
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-900/50">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-600" size={18} />
                 <input
                   type="text"
-                  placeholder="Search by name, Aadhar, or PAN..."
+                  placeholder="Search by name, Aadhaar, or PAN..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 dark:text-white transition-colors"
+                  className="w-full pl-12 pr-6 py-4 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl focus:border-indigo-500 dark:focus:border-indigo-500 focus:bg-white dark:focus:bg-slate-950 text-sm font-bold text-slate-900 dark:text-white outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600"
                 />
               </div>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-gray-50 dark:bg-gray-900/50 text-gray-600 dark:text-gray-400 font-medium border-b border-gray-200 dark:border-gray-700">
-                  <tr>
-                    <th className="px-6 py-4">Investor</th>
-                    <th className="px-6 py-4">Submitted On</th>
-                    <th className="px-6 py-4">Status</th>
-                    <th className="px-6 py-4 text-right">Actions</th>
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/50 dark:bg-slate-800/30 text-slate-400 dark:text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] border-b border-slate-100 dark:border-slate-800">
+                    <th className="px-6 py-4">Investor Detail</th>
+                    <th className="px-6 py-4">Submitted</th>
+                    <th className="px-6 py-4">Verification</th>
+                    <th className="px-6 py-4 text-right">Review</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
                   {isLoading ? (
                     <tr>
-                      <td colSpan="4" className="px-6 py-8 text-center text-gray-500">
-                        <div className="flex items-center justify-center gap-2">
-                          <div className="w-5 h-5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
-                          Loading...
+                      <td colSpan="4" className="px-6 py-20 text-center">
+                        <div className="flex flex-col items-center justify-center gap-3">
+                          <div className="w-8 h-8 border-3 border-indigo-200 dark:border-indigo-900 border-t-indigo-600 rounded-full animate-spin" />
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Loading Vault...</span>
                         </div>
                       </td>
                     </tr>
                   ) : filteredKycs.length === 0 ? (
                     <tr>
-                      <td colSpan="4" className="px-6 py-8 text-center text-gray-500">
-                        No KYC submissions found.
+                      <td colSpan="4" className="px-6 py-20 text-center text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest text-xs">
+                        No KYC submissions found in vault.
                       </td>
                     </tr>
                   ) : (
                     filteredKycs.map((kyc) => (
-                      <tr key={kyc._id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="font-medium text-gray-900 dark:text-white">
-                            {kyc.userId?.name || 'Unknown User'}
+                      <tr
+                        key={kyc._id}
+                        className={`hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors cursor-pointer group ${selectedKyc?._id === kyc._id ? 'bg-indigo-50/50 dark:bg-indigo-500/5' : ''}`}
+                        onClick={() => setSelectedKyc(kyc)}
+                      >
+                        <td className="px-6 py-5">
+                          <p className="font-black text-slate-900 dark:text-white text-[13px] leading-tight mb-1">{kyc.userId?.name || 'Unknown User'}</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{kyc.userId?.email}</p>
+                        </td>
+                        <td className="px-6 py-5 text-[12px] font-bold text-slate-500 dark:text-slate-400 tabular-nums">{new Date(kyc.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
+                        <td className="px-6 py-5">{getStatusBadge(kyc.status)}</td>
+                        <td className="px-6 py-5 text-right">
+                          <div className="inline-flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600 transition-all">
+                             <Eye size={14} />
+                             <span className="text-[10px] font-black uppercase tracking-widest">Open</span>
                           </div>
-                          <div className="text-gray-500 dark:text-gray-400 text-xs mt-1">
-                            {kyc.userId?.email}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-gray-600 dark:text-gray-400">
-                          {new Date(kyc.createdAt).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4">
-                          {getStatusBadge(kyc.status)}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <button
-                            onClick={() => setSelectedKyc(kyc)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
-                          >
-                            <Eye size={16} /> Review
-                          </button>
                         </td>
                       </tr>
                     ))
@@ -174,93 +150,103 @@ const KYCManagement = () => {
           </div>
         </div>
 
-        {/* Detail Section */}
-        <div className="lg:col-span-1">
-          {selectedKyc ? (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 sticky top-24 transition-colors">
-              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                      {selectedKyc.userId?.name}
-                    </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                      {selectedKyc.userId?.email}
-                    </p>
-                  </div>
-                  {getStatusBadge(selectedKyc.status)}
-                </div>
+        {/* ── Detail Panel ── */}
+        <div className="lg:col-span-5 xl:col-span-4 sticky top-32">
+          <AnimatePresence mode="wait">
+            {selectedKyc ? (
+              <motion.div 
+                key={selectedKyc._id}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="ui-card dark:bg-slate-900/50 overflow-hidden shadow-2xl"
+              >
+                <div className="h-1.5 w-full bg-gradient-to-r from-indigo-500 to-violet-600" />
 
-                <div className="space-y-4 mt-6">
-                  <div>
-                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Aadhar Number</p>
-                    <p className="font-medium text-gray-900 dark:text-white">{selectedKyc.aadharNumber}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">PAN Number</p>
-                    <p className="font-medium text-gray-900 dark:text-white uppercase">{selectedKyc.panNumber}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Phone Number</p>
-                    <p className="font-medium text-gray-900 dark:text-white">{selectedKyc.phoneNumber}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
-                <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Submitted Documents</h4>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">PAN Card</p>
-                    <div className="bg-gray-100 dark:bg-gray-900 rounded-lg p-2 border border-gray-200 dark:border-gray-700 overflow-hidden">
-                      <img 
-                        src={`${API_URL}${selectedKyc.panCardPhotoUrl}`} 
-                        alt="PAN Card" 
-                        className="w-full h-auto rounded object-contain max-h-48"
-                        onError={(e) => { e.target.src = 'https://via.placeholder.com/400x200?text=Image+Not+Found'; }}
-                      />
+                <div className="p-8 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex justify-between items-start mb-8">
+                    <div>
+                      <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter">{selectedKyc.userId?.name}</h3>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Investor Profile</p>
                     </div>
+                    {getStatusBadge(selectedKyc.status)}
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">User Photo</p>
-                    <div className="bg-gray-100 dark:bg-gray-900 rounded-lg p-2 border border-gray-200 dark:border-gray-700 overflow-hidden">
-                      <img 
-                        src={`${API_URL}${selectedKyc.submissionPhotoUrl}`} 
-                        alt="User Photo" 
-                        className="w-full h-auto rounded object-contain max-h-48"
-                        onError={(e) => { e.target.src = 'https://via.placeholder.com/200x200?text=Image+Not+Found'; }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
 
-              {selectedKyc.status === 'Pending' && (
-                <div className="p-6 bg-gray-50 dark:bg-gray-900/50 flex gap-3 rounded-b-lg">
-                  <button
-                    onClick={() => handleVerify(selectedKyc._id, 'Rejected')}
-                    className="flex-1 px-4 py-2 bg-white dark:bg-gray-800 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 font-medium rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
-                  >
-                    Reject
-                  </button>
-                  <button
-                    onClick={() => handleVerify(selectedKyc._id, 'Approved')}
-                    className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors shadow-sm"
-                  >
-                    Approve KYC
-                  </button>
+                  <div className="grid grid-cols-2 gap-y-6 gap-x-4">
+                    {[
+                      { label: 'Aadhaar ID', value: selectedKyc.aadharNumber },
+                      { label: 'PAN Identity', value: selectedKyc.panNumber, mono: true },
+                      { label: 'Verified Phone', value: selectedKyc.phoneNumber },
+                      { label: 'Email Address', value: selectedKyc.userId?.email, full: true },
+                    ].map(({ label, value, mono, full }) => (
+                      <div key={label} className={full ? 'col-span-2' : ''}>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 mb-1">{label}</p>
+                        <p className={`text-[13px] font-black text-slate-900 dark:text-white ${mono ? 'uppercase' : ''}`}>{value || 'N/A'}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              )}
-            </div>
-          ) : (
-            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-700 h-full min-h-[400px] flex flex-col items-center justify-center p-8 text-center transition-colors">
-              <Eye className="h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">No Submission Selected</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Select a KYC submission from the list to review their details and documents.
-              </p>
-            </div>
-          )}
+
+                <div className="p-8 space-y-8 bg-slate-50/30 dark:bg-slate-900/30 border-b border-slate-100 dark:border-slate-800">
+                  <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500">Document Evidence</h4>
+                  <div className="grid grid-cols-1 gap-6">
+                    {[
+                      { label: 'PAN Card Scan', url: selectedKyc.panCardPhotoUrl },
+                      { label: 'Verification Selfie', url: selectedKyc.submissionPhotoUrl },
+                    ].map(({ label, url }) => (
+                      <div key={label} className="group">
+                        <div className="flex items-center justify-between mb-3 px-1">
+                           <p className="text-[11px] font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">{label}</p>
+                           <button className="text-[10px] font-black text-indigo-600 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all">View Full</button>
+                        </div>
+                        <div className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-[28px] overflow-hidden shadow-inner group-hover:border-indigo-500/50 transition-all">
+                          <img
+                            src={`${API_URL}${url}`}
+                            alt={label}
+                            className="w-full h-auto object-contain max-h-48 group-hover:scale-105 transition-transform duration-500"
+                            onError={(e) => { e.target.src = 'https://via.placeholder.com/400x200?text=Identity+Proof+Not+Found'; }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {selectedKyc.status === 'Pending' ? (
+                  <div className="p-6 grid grid-cols-2 gap-4">
+                    <button
+                      onClick={() => handleVerify(selectedKyc._id, 'Rejected')}
+                      className="flex items-center justify-center gap-2 py-4 bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-500/30 text-rose-600 dark:text-rose-400 text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-rose-600 hover:text-white transition-all group"
+                    >
+                      <UserX size={16} className="group-hover:rotate-12 transition-transform" /> Reject
+                    </button>
+                    <button
+                      onClick={() => handleVerify(selectedKyc._id, 'Approved')}
+                      className="flex items-center justify-center gap-2 py-4 bg-indigo-600 text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-xl shadow-indigo-500/20 hover:-translate-y-1 active:translate-y-0 transition-all group"
+                    >
+                      <UserCheck size={16} className="group-hover:scale-110 transition-transform" /> Approve
+                    </button>
+                  </div>
+                ) : (
+                  <div className="p-8 text-center">
+                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Verified on {new Date().toLocaleDateString()}</p>
+                  </div>
+                )}
+              </motion.div>
+            ) : (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="bg-slate-50 dark:bg-slate-900/30 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[32px] h-[500px] flex flex-col items-center justify-center p-10 text-center"
+              >
+                <div className="w-16 h-16 rounded-[22px] bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 flex items-center justify-center mb-6 shadow-sm">
+                  <Shield className="text-slate-300 dark:text-slate-700" size={32} />
+                </div>
+                <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-2">Review Vault Empty</h3>
+                <p className="text-xs text-slate-400 dark:text-slate-500 font-medium leading-relaxed">Select a pending application from the left to begin the verification protocol.</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>

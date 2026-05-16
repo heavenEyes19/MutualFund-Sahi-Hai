@@ -1,523 +1,421 @@
 import { Link } from "react-router-dom";
-import { Moon, Sun } from "lucide-react";
-import useDarkMode from "../hooks/useDarkMode";
+import { ArrowRight, TrendingUp, Shield, Zap, BarChart2, Star, ChevronRight, Sparkles } from "lucide-react";
+import { motion } from "framer-motion";
 
-const DonutChart = () => {
-  const segments = [
-    { pct: 42, color: "#1a6fd4", label: "Equity" },
-    { pct: 28, color: "#0da870", label: "Debt" },
-    { pct: 18, color: "#f59e0b", label: "Hybrid" },
-    { pct: 12, color: "#e05c3a", label: "ELSS" },
-  ];
+/* ─── Decorative SVG illustrations inline ─── */
+const HeroIllustration = () => (
+  <div className="relative w-full max-w-[420px] mx-auto select-none">
+    {/* Outer glow blob */}
+    <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-indigo-500/20 via-violet-500/15 to-cyan-500/10 blur-3xl scale-110 pointer-events-none" />
 
-  const r = 52;
-  const cx = 80;
-  const cy = 80;
-  const circumference = 2 * Math.PI * r;
-  let offset = 0;
+    {/* Main card stack */}
+    <div className="relative flex flex-col gap-4 p-2 sm:p-4">
 
-  return (
-    <div className="flex items-center gap-5">
-      <svg width="160" height="160" viewBox="0 0 160 160">
-        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#e8edf3" strokeWidth="18" />
-        {segments.map((seg, i) => {
-          const dash = (seg.pct / 100) * circumference;
-          const gap = circumference - dash;
-          const el = (
-            <circle
-              key={i}
-              cx={cx}
-              cy={cy}
-              r={r}
-              fill="none"
-              stroke={seg.color}
-              strokeWidth="18"
-              strokeDasharray={`${dash} ${gap}`}
-              strokeDashoffset={-offset}
-              transform="rotate(-90 80 80)"
-              strokeLinecap="round"
-              style={{ transition: "stroke-dasharray 1s ease" }}
-            />
-          );
-          offset += dash + 2;
-          return el;
-        })}
-        <text x={cx} y={cy - 6} textAnchor="middle" fontSize="13" fill="#64748b" fontFamily="'DM Sans', sans-serif">Returns</text>
-        <text x={cx} y={cy + 14} textAnchor="middle" fontSize="22" fontWeight="600" fill="#0f172a" fontFamily="'DM Sans', sans-serif">18.4%</text>
-      </svg>
-      <div className="flex flex-col gap-2">
-        {segments.map((s, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: s.color }} />
-            <span style={{ fontSize: 12, color: "#64748b", fontFamily: "'DM Sans', sans-serif" }}>{s.label}</span>
-            <span style={{ fontSize: 12, fontWeight: 600, color: "#0f172a", fontFamily: "'DM Sans', sans-serif", marginLeft: "auto" }}>{s.pct}%</span>
+      {/* Portfolio card */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8 }}
+        className="ui-card rounded-3xl p-5 sm:p-6 relative overflow-hidden dark:bg-slate-900/80 backdrop-blur-sm shadow-2xl border-indigo-500/10 dark:border-indigo-500/20"
+      >
+        <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-indigo-500/10 to-transparent rounded-bl-[80px]" />
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
+          <div>
+            <p className="text-[10px] sm:text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-1">Total Portfolio</p>
+            <p className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white" style={{fontVariantNumeric:'tabular-nums'}}>₹4,82,310</p>
           </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-const MiniSparkline = ({ color, positive }) => {
-  const points = positive
-    ? "0,30 10,25 20,22 30,18 40,15 50,10 60,7 70,4 80,2"
-    : "0,10 10,14 20,12 30,18 40,16 50,22 60,20 70,24 80,28";
-
-  return (
-    <svg width="80" height="32" viewBox="0 0 80 32">
-      <polyline
-        points={points}
-        fill="none"
-        stroke={color}
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-};
-
-const FundCard = ({ name, category, returns, positive, badge }) => (
-  <div
-    style={{
-      background: "#fff",
-      borderRadius: 14,
-      border: "1px solid #e8edf3",
-      padding: "14px 16px",
-      display: "flex",
-      flexDirection: "column",
-      gap: 8,
-      boxShadow: "0 2px 12px rgba(15,76,129,0.06)",
-    }}
-  >
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-      <div>
-        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#0f172a", fontFamily: "'DM Sans', sans-serif" }}>{name}</p>
-        <p style={{ margin: "2px 0 0", fontSize: 11, color: "#94a3b8", fontFamily: "'DM Sans', sans-serif" }}>{category}</p>
-      </div>
-      {badge && (
-        <span style={{ fontSize: 10, background: "#eaf4ff", color: "#1a6fd4", borderRadius: 20, padding: "2px 8px", fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}>
-          {badge}
-        </span>
-      )}
-    </div>
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
-      <div>
-        <p style={{ margin: 0, fontSize: 11, color: "#94a3b8", fontFamily: "'DM Sans', sans-serif" }}>3Y Returns</p>
-        <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: positive ? "#0da870" : "#e05c3a", fontFamily: "'DM Sans', sans-serif" }}>
-          {positive ? "+" : ""}{returns}%
-        </p>
-      </div>
-      <MiniSparkline color={positive ? "#0da870" : "#e05c3a"} positive={positive} />
-    </div>
-  </div>
-);
-
-const PortfolioCard = () => (
-  <div
-    style={{
-      background: "linear-gradient(135deg, #0f4c81 0%, #1a6fd4 60%, #0da870 100%)",
-      borderRadius: 20,
-      padding: "22px 22px 18px",
-      color: "#fff",
-      position: "relative",
-      overflow: "hidden",
-      boxShadow: "0 16px 48px rgba(15,76,129,0.3)",
-    }}
-  >
-    <div
-      style={{
-        position: "absolute", top: -30, right: -30, width: 120, height: 120,
-        borderRadius: "50%", background: "rgba(255,255,255,0.07)",
-      }}
-    />
-    <div
-      style={{
-        position: "absolute", bottom: -40, left: 20, width: 160, height: 160,
-        borderRadius: "50%", background: "rgba(255,255,255,0.04)",
-      }}
-    />
-    <p style={{ margin: 0, fontSize: 11, opacity: 0.7, letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: "'DM Sans', sans-serif" }}>
-      Total Portfolio Value
-    </p>
-    <p style={{ margin: "6px 0 0", fontSize: 32, fontWeight: 700, fontFamily: "'DM Sans', sans-serif" }}>
-      ₹4,82,310
-    </p>
-    <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 4 }}>
-      <span style={{ background: "rgba(255,255,255,0.15)", borderRadius: 20, padding: "2px 10px", fontSize: 12, fontFamily: "'DM Sans', sans-serif" }}>
-        ▲ +₹62,450 (14.9%)
-      </span>
-    </div>
-    <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.15)", display: "flex", justifyContent: "space-between" }}>
-      {[["6 Funds", "Active"], ["SIP ₹12k", "Monthly"], ["XIRR 18.4%", "All time"]].map(([val, lbl]) => (
-        <div key={lbl}>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }}>{val}</p>
-          <p style={{ margin: 0, fontSize: 10, opacity: 0.65, fontFamily: "'DM Sans', sans-serif" }}>{lbl}</p>
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+            <TrendingUp size={24} className="text-white" />
+          </div>
         </div>
-      ))}
-    </div>
-  </div>
-);
-
-const AiInsightCard = () => (
-  <div
-    style={{
-      background: "#fff",
-      borderRadius: 14,
-      border: "1px solid #e8edf3",
-      padding: "14px 16px",
-      boxShadow: "0 2px 12px rgba(15,76,129,0.06)",
-    }}
-  >
-    <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-      <div
-        style={{
-          width: 32, height: 32, borderRadius: 10, background: "linear-gradient(135deg,#1a6fd4,#0da870)",
-          display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-        }}
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1.5 rounded-full flex items-center gap-1.5 border border-emerald-100/50 dark:border-emerald-500/20">
+            <span className="text-[10px]">▲</span> +14.9% 
+          </span>
+          <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">Verified by AI insights</span>
+        </div>
+        {/* Mini sparkline */}
+        <svg className="mt-6 w-full" height="50" viewBox="0 0 300 50" fill="none">
+          <defs>
+            <linearGradient id="spark1" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#6366f1" stopOpacity="0.2"/>
+              <stop offset="100%" stopColor="#6366f1" stopOpacity="0"/>
+            </linearGradient>
+          </defs>
+          <path d="M0 45 Q30 38 60 32 Q90 28 120 22 Q150 18 180 14 Q210 10 240 6 Q270 4 300 2" stroke="#6366f1" strokeWidth="3" fill="none" strokeLinecap="round"/>
+          <path d="M0 45 Q30 38 60 32 Q90 28 120 22 Q150 18 180 14 Q210 10 240 6 Q270 4 300 2 L300 50 L0 50 Z" fill="url(#spark1)"/>
         </svg>
-      </div>
-      <div>
-        <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#0f172a", fontFamily: "'DM Sans', sans-serif" }}>AI Insight</p>
-        <p style={{ margin: "4px 0 0", fontSize: 11, color: "#64748b", lineHeight: 1.5, fontFamily: "'DM Sans', sans-serif" }}>
-          Your portfolio is overweight in large-cap. Consider rebalancing 15% into mid-cap for better risk-adjusted returns.
-        </p>
-      </div>
-    </div>
-  </div>
-);
+      </motion.div>
 
-const FloatingUI = () => (
-  <div style={{ position: "relative", width: "100%", maxWidth: 340, margin: "0 auto" }}>
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <PortfolioCard />
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <FundCard name="Mirae Asset" category="Large Cap" returns={22.4} positive={true} badge="Top Pick" />
-        <FundCard name="SBI Contra" category="Contra Fund" returns={31.7} positive={true} />
+      {/* Two small cards */}
+      <div className="grid grid-cols-2 gap-4">
+        <motion.div 
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+          className="ui-card rounded-2xl p-4 sm:p-5 dark:bg-slate-900/80 backdrop-blur-sm shadow-xl"
+        >
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center mb-4">
+            <BarChart2 size={20} className="text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <p className="text-[11px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mb-1">Active SIPs</p>
+          <p className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">6</p>
+          <div className="flex items-center gap-1.5 mt-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">Running</p>
+          </div>
+        </motion.div>
+        <motion.div 
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.8, delay: 0.3 }}
+          className="ui-card rounded-2xl p-4 sm:p-5 dark:bg-slate-900/80 backdrop-blur-sm shadow-xl"
+        >
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center mb-4">
+            <Zap size={20} className="text-indigo-600 dark:text-indigo-400" />
+          </div>
+          <p className="text-[11px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider mb-1">XIRR</p>
+          <p className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">18.4%</p>
+          <p className="text-[11px] text-indigo-600 dark:text-indigo-400 mt-2 font-bold uppercase tracking-tighter">Annualised</p>
+        </motion.div>
       </div>
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: 14,
-          border: "1px solid #e8edf3",
-          padding: "16px 18px",
-          boxShadow: "0 2px 12px rgba(15,76,129,0.06)",
-        }}
+
+      {/* AI insight card */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.5 }}
+        className="ui-card rounded-2xl p-4 sm:p-5 flex items-start gap-4 dark:bg-slate-900/80 backdrop-blur-sm shadow-xl"
       >
-        <p style={{ margin: "0 0 12px", fontSize: 13, fontWeight: 600, color: "#0f172a", fontFamily: "'DM Sans', sans-serif" }}>Allocation</p>
-        <DonutChart />
-      </div>
-      <AiInsightCard />
+        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-lg shadow-violet-500/30">
+          <Sparkles size={20} className="text-white" />
+        </div>
+        <div>
+          <p className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-1.5">AI Advisor</p>
+          <p className="text-[13px] text-slate-600 dark:text-slate-300 leading-relaxed font-medium italic">"Your portfolio is healthy. Diversify into mid-caps for optimized growth."</p>
+        </div>
+      </motion.div>
     </div>
   </div>
 );
 
-const Feature = ({ icon, title, desc }) => (
-  <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "24px", background: "#fff", borderRadius: 16, border: "1px solid #e8edf3" }}>
-    <div
-      style={{
-        width: 44, height: 44, borderRadius: 12,
-        background: "linear-gradient(135deg, #eaf4ff 0%, #e0f7f0 100%)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-      }}
-    >
-      {icon}
+const Feature = ({ icon: Icon, title, desc, color, delay }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }}
+    transition={{ duration: 0.6, delay: delay / 1000 }}
+    className="ui-card p-6 sm:p-8 flex flex-col gap-5 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-900 transition-all hover:scale-[1.02] group"
+  >
+    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-110 group-hover:rotate-3 ${color}`}>
+      <Icon size={24} />
     </div>
-    <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: "#0f172a", fontFamily: "'DM Sans', sans-serif" }}>{title}</p>
-    <p style={{ margin: 0, fontSize: 13, color: "#64748b", lineHeight: 1.6, fontFamily: "'DM Sans', sans-serif" }}>{desc}</p>
-  </div>
+    <div>
+      <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">{title}</h3>
+      <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{desc}</p>
+    </div>
+  </motion.div>
+);
+
+const Stat = ({ value, label, delay }) => (
+  <motion.div 
+    initial={{ opacity: 0, scale: 0.9 }}
+    whileInView={{ opacity: 1, scale: 1 }}
+    viewport={{ once: true }}
+    transition={{ duration: 0.5, delay: delay / 1000 }}
+    className="text-center lg:text-left shrink-0"
+  >
+    <p className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tighter">{value}</p>
+    <p className="text-xs sm:text-sm text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-1">{label}</p>
+  </motion.div>
 );
 
 export default function Landing() {
-  const [isDarkMode, toggleDarkMode] = useDarkMode();
-
   return (
-    <div className="bg-gray-50 dark:bg-gray-900 transition-colors duration-200 text-gray-900 dark:text-white" style={{ fontFamily: "'DM Sans', sans-serif", minHeight: "100vh", overflowX: "hidden" }}>
-      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Serif+Display&display=swap" rel="stylesheet" />
+    <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300 overflow-x-hidden font-inter">
 
-      {/* Navbar */}
-      <nav
-        className="bg-white/85 dark:bg-gray-900/85 border-b border-gray-200 dark:border-gray-800 transition-colors duration-200"
-        style={{
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          padding: "18px 6%", backdropFilter: "blur(12px)", position: "sticky", top: 0, zIndex: 100,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div
-            style={{
-              width: 28, height: 28, borderRadius: 8,
-              background: "linear-gradient(135deg, #0f4c81, #1a6fd4)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-              <path d="M3 3v18h18" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
-              <path d="M7 16l4-5 4 3 5-6" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+      {/* ── NAVBAR ── */}
+      <nav className="fixed top-0 inset-x-0 z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-900">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16 sm:h-20">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+              <TrendingUp size={18} className="text-white" />
+            </div>
+            <span className="font-black text-slate-900 dark:text-white text-[16px] sm:text-[18px] tracking-tighter">Mutual Funds <span className="text-indigo-500">Sahi Hai</span></span>
           </div>
-          <span className="text-gray-900 dark:text-white" style={{ fontSize: 17, fontWeight: 700, letterSpacing: "-0.02em" }}>Mutual-Funds Sahi Hai</span>
-        </div>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <button
-            onClick={toggleDarkMode}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors text-gray-700 dark:text-gray-300"
-            title="Toggle dark mode"
-          >
-            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
-          <Link
-            to="/login"
-            style={{
-              padding: "8px 18px", fontSize: 14, fontWeight: 500, color: "#1a6fd4",
-              textDecoration: "none", borderRadius: 8,
-            }}
-          >
-            Login
-          </Link>
-          <Link
-            to="/register"
-            style={{
-              padding: "9px 20px", fontSize: 14, fontWeight: 600, color: "#fff",
-              textDecoration: "none", borderRadius: 10,
-              background: "linear-gradient(135deg, #0f4c81, #1a6fd4)",
-              boxShadow: "0 4px 14px rgba(26,111,212,0.35)",
-            }}
-          >
-            Get Started
-          </Link>
+
+          <div className="hidden lg:flex items-center gap-2">
+            {['Features', 'About', 'Security', 'Pricing'].map(item => (
+              <a key={item} href={`#${item.toLowerCase()}`} className="px-4 py-2 text-sm text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 rounded-xl transition-all font-bold">{item}</a>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Link to="/login" className="hidden sm:block px-5 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all">
+              Sign in
+            </Link>
+            <Link
+              to="/register"
+              className="px-5 py-2.5 sm:px-6 sm:py-3 text-sm font-bold text-white rounded-2xl bg-gradient-to-r from-indigo-500 to-violet-600 hover:shadow-xl hover:shadow-indigo-500/25 hover:-translate-y-0.5 active:translate-y-0 transition-all"
+            >
+              Get started
+            </Link>
+          </div>
         </div>
       </nav>
 
-      {/* Hero */}
-      <section
-        style={{
-          position: "relative",
-          padding: "72px 6% 80px",
-          display: "flex",
-          gap: 48,
-          alignItems: "center",
-          maxWidth: 1200,
-          margin: "0 auto",
-          flexWrap: "wrap",
-        }}
-      >
-        {/* BG decoration */}
-        <div
-          style={{
-            position: "absolute", top: 40, left: "8%", width: 480, height: 480,
-            borderRadius: "50%", background: "radial-gradient(circle, rgba(26,111,212,0.08) 0%, transparent 70%)",
-            pointerEvents: "none",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute", top: 120, right: "4%", width: 300, height: 300,
-            borderRadius: "50%", background: "radial-gradient(circle, rgba(13,168,112,0.07) 0%, transparent 70%)",
-            pointerEvents: "none",
-          }}
-        />
+      {/* ── HERO ── */}
+      <section className="relative pt-32 pb-20 sm:pt-48 sm:pb-32 px-4 sm:px-6 lg:px-8 overflow-hidden">
+        {/* Background decoration */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[800px] opacity-40 dark:opacity-20" style={{background: 'radial-gradient(ellipse at center, #6366f1 0%, rgba(99,102,241,0) 70%)'}} />
+          <div className="absolute top-48 -left-20 w-96 h-96 rounded-full bg-indigo-500/10 dark:bg-indigo-500/5 blur-[120px]" />
+          <div className="absolute top-64 -right-20 w-80 h-80 rounded-full bg-violet-500/10 dark:bg-violet-500/5 blur-[100px]" />
+          {/* Animated Grid pattern */}
+          <div className="absolute inset-0 opacity-[0.05] dark:opacity-[0.08]" style={{backgroundImage: 'radial-gradient(#6366f1 1px, transparent 1px)', backgroundSize: '40px 40px'}} />
+        </div>
 
-        {/* Left text */}
-        <div style={{ flex: "1 1 400px", position: "relative", zIndex: 1 }}>
-          <div
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 6,
-              background: "#eaf4ff", borderRadius: 20, padding: "5px 14px",
-              fontSize: 12, fontWeight: 600, color: "#1a6fd4", marginBottom: 20,
-            }}
-          >
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#0da870", display: "inline-block" }} />
-            AI-Powered Fund Intelligence
-          </div>
+        <div className="max-w-7xl mx-auto relative">
+          <div className="flex flex-col lg:flex-row items-center gap-16 lg:gap-24">
 
-          <h1
-            className="text-gray-900 dark:text-white"
-            style={{
-              margin: 0, fontSize: "clamp(32px, 5vw, 52px)", fontWeight: 700,
-              lineHeight: 1.15, letterSpacing: "-0.03em",
-              fontFamily: "'DM Serif Display', serif",
-            }}
-          >
-            Invest Smarter with{" "}
-            <span
-              style={{
-                background: "linear-gradient(90deg, #1a6fd4, #0da870)",
-                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-              }}
-            >
-              AI-driven
-            </span>{" "}
-            Mutual Fund Insights
-          </h1>
+            {/* Left text */}
+            <div className="flex-1 text-center lg:text-left">
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 text-indigo-600 dark:text-indigo-400 text-xs font-bold mb-8"
+              >
+                <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+                Next-Gen AI Wealth Intelligence Now Live
+              </motion.div>
 
-          <p
-            style={{
-              margin: "20px 0 0", fontSize: 16, color: "#64748b", lineHeight: 1.7, maxWidth: 480,
-            }}
-          >
-            Analyze thousands of funds, build personalized portfolios, and track your wealth — all powered by real-time AI intelligence.
-          </p>
+              <motion.h1 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="text-5xl sm:text-7xl lg:text-8xl font-black leading-[0.95] tracking-tighter text-slate-900 dark:text-white mb-8"
+              >
+                Invest with<br />
+                <span className="gradient-text">AI Precision</span>
+              </motion.h1>
 
-          <div style={{ display: "flex", gap: 12, marginTop: 36, flexWrap: "wrap" }}>
-            <Link
-              to="/register"
-              style={{
-                padding: "14px 28px", fontSize: 15, fontWeight: 600, color: "#fff",
-                textDecoration: "none", borderRadius: 12,
-                background: "linear-gradient(135deg, #0f4c81, #1a6fd4)",
-                boxShadow: "0 6px 20px rgba(26,111,212,0.35)",
-                display: "inline-flex", alignItems: "center", gap: 8,
-              }}
-            >
-              Start Investing Free
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M5 12h14M12 5l7 7-7 7" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </Link>
-            <Link
-              to="/login"
-              style={{
-                padding: "14px 28px", fontSize: 15, fontWeight: 500, color: "#0f172a",
-                textDecoration: "none", borderRadius: 12,
-                background: "#fff", border: "1px solid #e2e8f0",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-              }}
-            >
-              See Demo
-            </Link>
-          </div>
+              <motion.p 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="text-lg sm:text-xl text-slate-500 dark:text-slate-400 leading-relaxed mb-10 max-w-xl mx-auto lg:mx-0 font-medium"
+              >
+                Analyze thousands of mutual funds in seconds, track performance with real-time data, and build generational wealth with AI-guided strategies.
+              </motion.p>
 
-          {/* Stats */}
-          <div className="flex flex-wrap gap-8 mt-12 pt-8 border-t border-gray-200 dark:border-gray-700">
-            {[["₹2,400 Cr+", "AUM Tracked"], ["15,000+", "Active Investors"], ["98.4%", "Accuracy Rate"]].map(([val, lbl]) => (
-              <div key={lbl}>
-                <p className="m-0 text-2xl font-bold text-gray-900 dark:text-white">
-                  {val}
-                </p>
-                <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                  {lbl}
-                </p>
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start"
+              >
+                <Link
+                  to="/register"
+                  className="inline-flex items-center justify-center gap-3 px-8 py-4 text-base font-bold text-white rounded-2xl bg-gradient-to-r from-indigo-500 to-violet-600 shadow-2xl shadow-indigo-500/30 hover:-translate-y-1 active:translate-y-0 transition-all"
+                >
+                  Get Started Free <ArrowRight size={20} />
+                </Link>
+                <Link
+                  to="/login"
+                  className="inline-flex items-center justify-center gap-3 px-8 py-4 text-base font-bold text-slate-700 dark:text-slate-300 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-xl"
+                >
+                  View Demo
+                </Link>
+              </motion.div>
+
+              {/* Stats row */}
+              <div className="flex flex-wrap justify-center lg:justify-start gap-x-12 gap-y-8 mt-16 pt-12 border-t border-slate-100 dark:border-slate-900">
+                <Stat value="₹2,400 Cr+" label="AUM Analyzed" delay={400} />
+                <Stat value="15,000+" label="Smart Investors" delay={500} />
+                <Stat value="18.4%" label="Avg. Portfolio Growth" delay={600} />
               </div>
+            </div>
+
+            {/* Right illustration */}
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, rotate: 2 }}
+              animate={{ opacity: 1, scale: 1, rotate: 0 }}
+              transition={{ duration: 1 }}
+              className="flex-1 w-full max-w-lg lg:max-w-none perspective-1000"
+            >
+              <HeroIllustration />
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── TRUSTED BY SECTION ── */}
+      <section className="py-12 border-y border-slate-50 dark:border-slate-900 bg-slate-50/30 dark:bg-slate-900/20">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+            <p className="text-[11px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-[0.3em] text-center md:text-left shrink-0">Supported By Top AMCs</p>
+            <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-6 opacity-30 dark:opacity-40 grayscale hover:grayscale-0 transition-all duration-500">
+              {['HDFC MUTUAL', 'SBI FUNDS', 'AXIS ASSET', 'MIRAE ASSET', 'ICICI PRUDENTIAL', 'NIPPON LIFE'].map(brand => (
+                <span key={brand} className="text-sm sm:text-base font-black text-slate-800 dark:text-white whitespace-nowrap">{brand}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── FEATURES ── */}
+      <section id="features" className="py-24 sm:py-32 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-20">
+            <motion.p 
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.3em] mb-4"
+            >
+              The Edge You Need
+            </motion.p>
+            <motion.h2 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              className="text-4xl sm:text-6xl font-black text-slate-900 dark:text-white tracking-tighter"
+            >
+              Futuristic Investing, <span className="text-indigo-500">Simplified</span>
+            </motion.h2>
+            <motion.p 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              className="text-slate-500 dark:text-slate-400 mt-6 text-lg max-w-2xl mx-auto font-medium"
+            >
+              We've replaced manual spreadsheets and outdated tracking with a unified, AI-first platform designed for the modern wealth builder.
+            </motion.p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Feature delay={0} icon={Sparkles} color="bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400" title="AI Screener" desc="Instantly filter 5,000+ funds based on deep-learning risk patterns and sector momentum." />
+            <Feature delay={100} icon={Zap} color="bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400" title="Real-time Engine" desc="Live NAV pulse, instant portfolio impact analysis, and smart goal-tracking alerts." />
+            <Feature delay={200} icon={BarChart2} color="bg-cyan-50 dark:bg-cyan-500/10 text-cyan-600 dark:text-cyan-400" title="Auto-Balancing" desc="Get precise trade recommendations when your portfolio drifts from your target risk profile." />
+            <Feature delay={300} icon={Shield} color="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" title="Fort Knox Security" desc="Bank-grade AES-256 encryption with zero-trust architecture. Your assets are safe." />
+          </div>
+        </div>
+      </section>
+
+      {/* ── HOW IT WORKS ── */}
+      <section id="security" className="py-24 sm:py-32 px-4 sm:px-6 lg:px-8 bg-slate-50 dark:bg-slate-900/30 transition-colors duration-300">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-20">
+            <h2 className="text-4xl sm:text-6xl font-black text-slate-900 dark:text-white tracking-tighter">Your Path to <span className="text-indigo-500">Wealth</span></h2>
+          </div>
+          <div className="relative">
+            <div className="absolute top-12 left-0 right-0 h-1 bg-indigo-100 dark:bg-indigo-900 hidden md:block rounded-full overflow-hidden">
+               <motion.div 
+                  initial={{ width: 0 }}
+                  whileInView={{ width: '100%' }}
+                  transition={{ duration: 1.5, ease: "easeInOut" }}
+                  className="h-full bg-gradient-to-r from-indigo-500 to-violet-600"
+               />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+              {[
+                { step: '01', title: 'Connect', desc: 'Securely link your existing portfolio or start fresh in under 60 seconds.' },
+                { step: '02', title: 'Analyze', desc: 'Let our AI scan your profile to find hidden risks and growth opportunities.' },
+                { step: '03', title: 'Optimize', desc: 'Execute recommended trades and watch your wealth grow with automation.' },
+              ].map(({ step, title, desc }, idx) => (
+                <motion.div 
+                  key={step} 
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.2 }}
+                  className="text-center flex flex-col items-center group"
+                >
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-[32px] bg-white dark:bg-slate-900 border-4 border-indigo-50 dark:border-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-black text-2xl sm:text-3xl mb-6 shadow-2xl relative z-10 group-hover:rotate-6 transition-transform">
+                    {step}
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">{title}</h3>
+                  <p className="text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{desc}</p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── TESTIMONIALS ── */}
+      <section className="py-24 sm:py-32 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {[
+              { name: 'Priya Sharma', role: 'Software Engineer', text: 'The AI recommendations predicted a 15% growth for my mid-cap allocation, and they were spot on. The best UI I have seen in Indian FinTech.', stars: 5 },
+              { name: 'Rahul Gupta', role: 'Startup Founder', text: 'Finally, a platform that doesn\'t look like it was made in the 90s. Clean, fast, and the AI advisory is genuinely world-class.', stars: 5 },
+              { name: 'Ananya Patel', role: 'Physician', text: 'As a busy doctor, I don\'t have time to research 5,000 funds. MFSH does the heavy lifting for me while I stay in control.', stars: 5 },
+            ].map(({ name, role, text, stars }, idx) => (
+              <motion.div 
+                key={name}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.1 }}
+                className="ui-card p-8 sm:p-10 flex flex-col dark:bg-slate-900/40"
+              >
+                <div className="flex gap-1 mb-6">
+                  {Array.from({length: stars}).map((_, i) => <Star key={i} size={16} className="text-amber-400 fill-amber-400" />)}
+                </div>
+                <p className="text-lg text-slate-700 dark:text-slate-300 font-medium leading-relaxed mb-8 flex-1 italic">"{text}"</p>
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-indigo-500/10 flex items-center justify-center font-bold text-indigo-600 dark:text-indigo-400">
+                    {name.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-900 dark:text-white leading-none mb-1">{name}</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest">{role}</p>
+                  </div>
+                </div>
+              </motion.div>
             ))}
           </div>
         </div>
-
-        {/* Right UI mockup */}
-        <div style={{ flex: "1 1 320px", position: "relative", zIndex: 1 }}>
-          <FloatingUI />
-        </div>
       </section>
 
-      {/* Features */}
-      <section style={{ padding: "64px 6%", maxWidth: 1200, margin: "0 auto" }}>
-        <div style={{ textAlign: "center", marginBottom: 48 }}>
-          <p style={{ margin: "0 0 10px", fontSize: 12, fontWeight: 600, color: "#1a6fd4", letterSpacing: "0.1em", textTransform: "uppercase" }}>Why choose us</p>
-          <h2 className="text-gray-900 dark:text-white" style={{ margin: 0, fontSize: "clamp(24px, 4vw, 36px)", fontWeight: 700, letterSpacing: "-0.02em", fontFamily: "'DM Serif Display', serif" }}>
-            Everything you need to grow wealth
-          </h2>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 20 }}>
-          <Feature
-            icon={
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M9.5 2A2.5 2.5 0 0112 4.5v15a2.5 2.5 0 01-5 0v-15A2.5 2.5 0 019.5 2z" stroke="#1a6fd4" strokeWidth="2" />
-                <path d="M14.5 8A2.5 2.5 0 0117 10.5v9a2.5 2.5 0 01-5 0v-9A2.5 2.5 0 0114.5 8z" stroke="#0da870" strokeWidth="2" />
-                <path d="M4.5 14A2.5 2.5 0 017 16.5v3a2.5 2.5 0 01-5 0v-3A2.5 2.5 0 014.5 14z" stroke="#f59e0b" strokeWidth="2" />
-              </svg>
-            }
-            title="AI Fund Screener"
-            desc="Screen 5,000+ funds in seconds using AI-powered filters based on risk, returns, sector, and your goals."
-          />
-          <Feature
-            icon={
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="9" stroke="#1a6fd4" strokeWidth="2" />
-                <path d="M12 7v5l3 3" stroke="#0da870" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            }
-            title="Real-time Tracking"
-            desc="Live NAV updates, portfolio P&L, and alerts — all in one clean dashboard that works across devices."
-          />
-          <Feature
-            icon={
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="#1a6fd4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M2 17l10 5 10-5" stroke="#0da870" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M2 12l10 5 10-5" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            }
-            title="Smart Rebalancing"
-            desc="AI detects drift in your allocation and recommends precise rebalancing actions to keep you on track."
-          />
-          <Feature
-            icon={
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="#1a6fd4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M9 12l2 2 4-4" stroke="#0da870" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            }
-            title="SEBI-Compliant Security"
-            desc="Bank-grade 256-bit encryption, 2FA, and zero storage of sensitive credentials. Your money stays yours."
-          />
-        </div>
-      </section>
-
-      {/* CTA strip */}
-      <section style={{ padding: "0 6% 80px", maxWidth: 1200, margin: "0 auto" }}>
-        <div
-          style={{
-            background: "linear-gradient(135deg, #0f4c81 0%, #1a6fd4 60%, #0da870 100%)",
-            borderRadius: 24, padding: "52px 48px",
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            flexWrap: "wrap", gap: 24, position: "relative", overflow: "hidden",
-          }}
-        >
-          <div style={{ position: "absolute", top: -60, right: -60, width: 240, height: 240, borderRadius: "50%", background: "rgba(255,255,255,0.06)", pointerEvents: "none" }} />
-          <div style={{ position: "absolute", bottom: -80, left: 40, width: 200, height: 200, borderRadius: "50%", background: "rgba(255,255,255,0.04)", pointerEvents: "none" }} />
-          <div style={{ position: "relative", zIndex: 1 }}>
-            <h3 style={{ margin: 0, fontSize: "clamp(22px, 3vw, 32px)", fontWeight: 700, color: "#fff", fontFamily: "'DM Serif Display', serif" }}>
-              Start your wealth journey today
-            </h3>
-            <p style={{ margin: "8px 0 0", fontSize: 15, color: "rgba(255,255,255,0.75)" }}>
-              Join 15,000+ investors. No minimum investment. Cancel anytime.
-            </p>
+      {/* ── CTA ── */}
+      <section className="py-20 sm:py-32 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+        <div className="max-w-6xl mx-auto">
+          <div className="relative rounded-[48px] overflow-hidden p-10 sm:p-20 bg-slate-900 dark:bg-indigo-600 flex flex-col lg:flex-row items-center justify-between gap-12 shadow-[0_40px_100px_-20px_rgba(79,70,229,0.5)]">
+            <div className="absolute inset-0 opacity-20" style={{backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px'}} />
+            <div className="relative z-10 text-center lg:text-left">
+              <h2 className="text-4xl sm:text-6xl font-black text-white tracking-tighter mb-6">Secure your future,<br /> <span className="opacity-60">starting now.</span></h2>
+              <p className="text-indigo-100/70 text-lg sm:text-xl max-w-lg mx-auto lg:mx-0 font-medium leading-relaxed">Join 15,000+ investors building their dream portfolios with AI. Zero hidden fees. 100% Transparency.</p>
+            </div>
+            <div className="relative z-10 flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
+               <Link
+                to="/register"
+                className="inline-flex items-center justify-center gap-3 px-10 py-5 bg-white text-indigo-600 font-black text-lg rounded-[24px] hover:shadow-2xl hover:scale-105 active:scale-95 transition-all"
+              >
+                Join Now <ArrowRight size={22} />
+              </Link>
+            </div>
           </div>
-          <Link
-            to="/register"
-            style={{
-              padding: "14px 30px", fontSize: 15, fontWeight: 600, color: "#1a6fd4",
-              textDecoration: "none", borderRadius: 12,
-              background: "#fff", position: "relative", zIndex: 1,
-              boxShadow: "0 4px 16px rgba(0,0,0,0.15)",
-              display: "inline-flex", alignItems: "center", gap: 8, flexShrink: 0,
-            }}
-          >
-            Create Free Account
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M5 12h14M12 5l7 7-7 7" stroke="#1a6fd4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </Link>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-gray-200 dark:border-gray-800" style={{ padding: "28px 6%", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ width: 22, height: 22, borderRadius: 6, background: "linear-gradient(135deg, #0f4c81, #1a6fd4)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-              <path d="M3 3v18h18" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
-              <path d="M7 16l4-5 4 3 5-6" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+      {/* ── FOOTER ── */}
+      <footer className="py-12 sm:py-20 border-t border-slate-100 dark:border-slate-900 bg-white dark:bg-slate-950">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-10">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-xl shadow-indigo-500/20">
+                <TrendingUp size={22} className="text-white" />
+              </div>
+              <span className="font-black text-slate-900 dark:text-white text-xl tracking-tighter">Mutual Funds <span className="text-indigo-500">Sahi Hai</span></span>
+            </div>
+            <div className="flex flex-wrap justify-center gap-x-8 gap-y-4">
+              {['Terms', 'Privacy', 'Compliance', 'Security', 'Contact'].map(item => (
+                <a key={item} href="#" className="text-sm font-bold text-slate-400 dark:text-slate-500 hover:text-indigo-500 transition-colors uppercase tracking-widest">{item}</a>
+              ))}
+            </div>
+            <div className="text-center md:text-right">
+              <p className="text-xs font-bold text-slate-400 dark:text-slate-600 uppercase tracking-widest mb-1">Made with Precision</p>
+              <p className="text-[11px] text-slate-400 dark:text-slate-700">© 2025 MFSH Ltd. SEBI INA000012345</p>
+            </div>
           </div>
-          <span className="text-gray-900 dark:text-white" style={{ fontSize: 14, fontWeight: 600 }}>Mutual-Funds Sahi Hai</span>
         </div>
-        <p className="text-gray-500 dark:text-gray-400" style={{ margin: 0, fontSize: 12 }}>
-          © 2025 Mutual-Funds Sahi Hai · SEBI Registered · AMFI Compliant
-        </p>
       </footer>
     </div>
   );

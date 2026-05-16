@@ -17,8 +17,8 @@ export const createOrder = async (req, res) => {
     }
 
     const instance = new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID,
-      key_secret: process.env.RAZORPAY_KEY_SECRET,
+      key_id: (process.env.RAZORPAY_KEY_ID || "").trim(),
+      key_secret: (process.env.RAZORPAY_KEY_SECRET || "").trim(),
     });
 
     const options = {
@@ -48,11 +48,11 @@ export const verifyPayment = async (req, res) => {
       amount,
       nav,
     } = req.body;
-    const validNav = parsePositiveNav(nav);
+    const itemsToProcess = req.body.items || [{ schemeCode, schemeName, amount, nav }];
 
-    if (!validNav) {
+    if (itemsToProcess.length === 0 || !itemsToProcess.every(item => parsePositiveNav(item.nav))) {
       return res.status(400).json({
-        message: "Live NAV data is unavailable for this scheme. Transaction cannot proceed.",
+        message: "Live NAV data is unavailable for one or more schemes. Transaction cannot proceed.",
       });
     }
 
@@ -60,7 +60,7 @@ export const verifyPayment = async (req, res) => {
 
     const sign = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSign = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .createHmac("sha256", (process.env.RAZORPAY_KEY_SECRET || "").trim())
       .update(sign.toString())
       .digest("hex");
 
@@ -68,7 +68,6 @@ export const verifyPayment = async (req, res) => {
       return res.status(400).json({ message: "Invalid signature sent!" });
     }
 
-    const itemsToProcess = req.body.items || [{ schemeCode, schemeName, amount, nav }];
 
     for (const item of itemsToProcess) {
       const validNav = parsePositiveNav(item.nav);

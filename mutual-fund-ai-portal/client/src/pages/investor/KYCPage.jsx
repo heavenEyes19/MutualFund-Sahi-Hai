@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FileCheck, Upload, CheckCircle2, AlertCircle, Loader2,
-  RefreshCw, ArrowLeft, ShieldCheck, Clock, XCircle
+  RefreshCw, ArrowLeft, ShieldCheck, Clock, XCircle, Shield
 } from "lucide-react";
 import API from "../../services/api";
 import { useKycStatus } from "../../hooks/useKycStatus";
@@ -20,7 +20,7 @@ export default function KYCPage() {
   const [panCardPhoto, setPanCardPhoto] = useState(null);
   const [submissionPhoto, setSubmissionPhoto] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [formMessage, setFormMessage] = useState(null); // { type: 'success'|'error', text }
+  const [formMessage, setFormMessage] = useState(null);
 
   const handleKYCSubmit = async (e) => {
     e.preventDefault();
@@ -56,298 +56,258 @@ export default function KYCPage() {
 
   if (kycLoading) {
     return (
-      <div className="min-h-screen bg-[#030712] flex items-center justify-center">
-        <Loader2 className="animate-spin text-blue-400" size={40} />
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-4 border-indigo-200 dark:border-indigo-900 border-t-indigo-600 rounded-full animate-spin" />
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-black uppercase tracking-widest">Fetching Identity Status…</p>
+        </div>
       </div>
     );
   }
 
-  // If already verified, show success state
   if (kycStatus === KYC_STATUS.VERIFIED) {
     return (
-      <div className="min-h-screen bg-[#030712] flex items-center justify-center p-4">
+      <div className="min-h-[70vh] flex items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-md bg-[#111827] border border-emerald-500/30 rounded-3xl p-8 text-center"
+          className="w-full max-w-md ui-card p-10 sm:p-12 text-center dark:bg-slate-900/50"
         >
-          <div className="h-1 w-full bg-gradient-to-r from-emerald-400 to-teal-500 -mt-8 mb-8 -mx-8 w-[calc(100%+4rem)]" />
-          <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-5 ring-1 ring-emerald-500/30 shadow-[0_0_30px_rgba(16,185,129,0.15)]">
-            <ShieldCheck size={38} className="text-emerald-400" />
+          <div className="w-24 h-24 rounded-[32px] bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-emerald-500/10">
+            <ShieldCheck size={48} className="text-emerald-500" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">KYC Verified!</h2>
-          <p className="text-slate-400 text-sm mb-8">
-            You have full access to invest, create SIPs, and manage your portfolio.
+          <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter mb-4">Identity Secured</h2>
+          <p className="text-slate-500 dark:text-slate-400 font-medium mb-10 leading-relaxed">
+            Your KYC has been approved. You now have unrestricted access to all investment products.
           </p>
           <button
-            onClick={() => navigate("/dashboard-area/mutual-funds")}
-            className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-emerald-500/20 text-sm"
+            onClick={() => navigate("/dashboard-area/explore")}
+            className="w-full py-4 bg-indigo-600 text-white font-black text-sm uppercase tracking-widest rounded-2xl shadow-xl shadow-indigo-500/20 hover:-translate-y-1 active:translate-y-0 transition-all"
           >
-            Start Investing →
+            Enter Dashboard
           </button>
         </motion.div>
       </div>
     );
   }
 
-  // If pending, show waiting state — no form
   if (kycStatus === KYC_STATUS.PENDING_VERIFICATION) {
     return (
-      <div className="min-h-screen bg-[#030712] flex items-center justify-center p-4">
+      <div className="min-h-[70vh] flex items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-md bg-[#111827] border border-amber-500/30 rounded-3xl p-8 text-center"
+          className="w-full max-w-md ui-card p-10 sm:p-12 text-center dark:bg-slate-900/50"
         >
-          <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-5 ring-1 ring-amber-500/30 shadow-[0_0_30px_rgba(245,158,11,0.15)]">
-            <Clock size={38} className="text-amber-400 animate-pulse" />
+          <div className="w-24 h-24 rounded-[32px] bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 flex items-center justify-center mx-auto mb-8 animate-pulse shadow-2xl shadow-amber-500/10">
+            <Clock size={48} className="text-amber-500" />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Under Verification</h2>
-          <p className="text-slate-400 text-sm leading-relaxed mb-4">
-            Your KYC documents have been submitted and are being reviewed by our team.
+          <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter mb-4">Under Review</h2>
+          <p className="text-slate-500 dark:text-slate-400 font-medium leading-relaxed mb-8">
+            Our compliance team is currently reviewing your documents. We'll notify you as soon as it's completed.
           </p>
-          <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 text-left mb-8">
-            <p className="text-amber-400 text-xs font-bold uppercase tracking-wider mb-1">What happens next?</p>
-            <p className="text-slate-400 text-xs leading-relaxed">
-              You'll be notified once your KYC is approved. In the meantime, you can browse mutual funds freely.
-            </p>
+          <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 rounded-2xl p-5 text-left mb-10">
+            <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Estimated Time</p>
+            <p className="text-sm font-bold text-slate-900 dark:text-white">24 — 48 Business Hours</p>
           </div>
           <button
-            onClick={() => navigate("/dashboard-area/mutual-funds")}
-            className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl transition-all text-sm"
+            onClick={() => navigate("/dashboard-area/explore")}
+            className="w-full py-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-black text-xs uppercase tracking-widest rounded-2xl transition-all"
           >
-            Browse Funds
+            Explore Dashboard
           </button>
         </motion.div>
       </div>
     );
   }
 
-  // NOT_SUBMITTED or REJECTED — show the form
   const isRejected = kycStatus === KYC_STATUS.REJECTED;
 
   return (
-    <div className="min-h-screen bg-[#030712] text-slate-200 font-sans">
-      <div className="max-w-2xl mx-auto px-4 py-10">
+    <div className="w-full transition-colors duration-300 font-inter">
+      <div className="max-w-3xl mx-auto py-4">
 
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-12">
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center gap-2 text-slate-500 hover:text-slate-300 text-sm font-medium mb-5 transition-colors"
+            className="flex items-center gap-2 text-slate-400 dark:text-slate-500 hover:text-indigo-600 transition-colors text-xs font-black uppercase tracking-widest mb-8"
           >
-            <ArrowLeft size={16} /> Back
+            <ArrowLeft size={14} /> Back
           </button>
 
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-500/10 rounded-2xl flex items-center justify-center ring-1 ring-blue-500/20">
-              <FileCheck size={24} className="text-blue-400" />
+          <div className="flex flex-col sm:flex-row sm:items-center gap-6">
+            <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-500/10 rounded-[22px] flex items-center justify-center border border-indigo-100 dark:border-indigo-500/20 shadow-inner">
+              <FileCheck size={32} className="text-indigo-600 dark:text-indigo-400" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">
-                {isRejected ? "Resubmit KYC" : "Complete Your KYC"}
+              <h1 className="text-3xl sm:text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
+                {isRejected ? "Resubmit KYC" : "Identity Verification"}
               </h1>
-              <p className="text-slate-500 text-sm mt-0.5">
-                {isRejected
-                  ? "Correct the issue and resubmit your documents"
-                  : "Verify your identity to unlock investment features"}
+              <p className="text-slate-500 dark:text-slate-400 font-medium mt-1">
+                {isRejected ? "Correct the issues identified and resubmit." : "SEBI regulated process to secure your account."}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Rejection reason banner */}
+        {/* Rejection banner */}
         {isRejected && kycRejectionReason && (
           <motion.div
-            initial={{ opacity: 0, y: -8 }}
+            initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6 bg-red-500/10 border border-red-500/30 rounded-2xl p-5 flex items-start gap-4"
+            className="mb-10 bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 rounded-[28px] p-6 flex items-start gap-4"
           >
-            <div className="w-10 h-10 bg-red-500/20 rounded-xl flex items-center justify-center shrink-0">
-              <XCircle size={20} className="text-red-400" />
+            <div className="w-12 h-12 bg-rose-100 dark:bg-rose-500/20 rounded-2xl flex items-center justify-center shrink-0">
+              <XCircle size={22} className="text-rose-500" />
             </div>
             <div>
-              <p className="text-red-300 text-sm font-bold mb-1">Your previous submission was rejected</p>
-              <p className="text-slate-400 text-sm">{kycRejectionReason}</p>
+              <p className="text-rose-700 dark:text-rose-400 text-sm font-black uppercase tracking-tight mb-1">Submission Rejected</p>
+              <p className="text-slate-500 dark:text-slate-400 text-sm font-medium leading-relaxed">{kycRejectionReason}</p>
             </div>
           </motion.div>
         )}
 
         {/* Steps indicator */}
-        <div className="mb-8 flex items-center gap-3">
-          {["Personal Details", "Documents", "Submit"].map((step, i) => (
-            <div key={step} className="flex items-center gap-2 flex-1">
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 ${i === 0 ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-500"
-                }`}>
+        <div className="mb-12 flex items-center gap-4">
+          {["Identity", "Documents", "Review"].map((step, i) => (
+            <div key={step} className="flex items-center gap-4 flex-1">
+              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-xs font-black shrink-0 transition-all ${i === 0 ? "bg-indigo-600 text-white shadow-xl shadow-indigo-500/25" : "bg-slate-100 dark:bg-slate-800 text-slate-400"}`}>
                 {i + 1}
               </div>
-              <span className={`text-xs font-semibold hidden sm:block ${i === 0 ? "text-blue-400" : "text-slate-600"}`}>
-                {step}
-              </span>
-              {i < 2 && <div className="flex-1 h-px bg-slate-800" />}
+              <span className={`text-[10px] font-black uppercase tracking-[0.2em] hidden sm:block ${i === 0 ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400"}`}>{step}</span>
+              {i < 2 && <div className="flex-1 h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div className={`h-full ${i === 0 ? 'w-1/2 bg-indigo-500' : 'w-0'}`} />
+              </div>}
             </div>
           ))}
         </div>
 
         {/* Form card */}
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-[#111827] border border-slate-700/60 rounded-2xl p-6 lg:p-8"
+          className="ui-card p-8 sm:p-12 dark:bg-slate-900/40"
         >
-
-          {/* Form message */}
           <AnimatePresence>
             {formMessage && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className={`mb-6 p-4 rounded-xl flex items-start gap-3 text-sm border ${formMessage.type === "success"
-                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                    : "bg-red-500/10 text-red-400 border-red-500/20"
-                  }`}
+                className={`mb-8 p-5 rounded-2xl flex items-start gap-4 text-sm border ${
+                  formMessage.type === "success"
+                    ? "bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-500/20"
+                    : "bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-100 dark:border-rose-500/20"
+                }`}
               >
-                {formMessage.type === "success"
-                  ? <CheckCircle2 size={16} className="shrink-0 mt-0.5" />
-                  : <AlertCircle size={16} className="shrink-0 mt-0.5" />}
-                <span>{formMessage.text}</span>
+                {formMessage.type === "success" ? <CheckCircle2 size={18} className="shrink-0 mt-0.5" /> : <AlertCircle size={18} className="shrink-0 mt-0.5" />}
+                <span className="font-bold">{formMessage.text}</span>
               </motion.div>
             )}
           </AnimatePresence>
 
-          <form onSubmit={handleKYCSubmit} className="space-y-6">
-
-            {/* Section: Personal Details */}
-            <div>
-              <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-4 pb-2 border-b border-slate-800">
-                Personal Details
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField
-                  label="PAN Number"
-                  placeholder="ABCDE1234F"
-                  value={panNumber}
-                  onChange={(e) => setPanNumber(e.target.value.toUpperCase())}
-                  maxLength={10}
-                  required
-                  hint="10-character alphanumeric"
-                />
-                <FormField
-                  label="Aadhaar Number"
-                  placeholder="1234 5678 9012"
-                  value={aadharNumber}
-                  onChange={(e) => setAadharNumber(e.target.value.replace(/\D/g, "").slice(0, 12))}
-                  maxLength={12}
-                  required
-                  hint="12-digit Aadhaar number"
-                />
+          <form onSubmit={handleKYCSubmit} className="space-y-10">
+            <div className="space-y-6">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500 mb-6">Step 01: Identification</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <FormField label="PAN Number" placeholder="ABCDE1234F" value={panNumber}
+                  onChange={(e) => setPanNumber(e.target.value.toUpperCase())} maxLength={10} required hint="Income Tax ID" />
+                <FormField label="Aadhaar Number" placeholder="0000 0000 0000" value={aadharNumber}
+                  onChange={(e) => setAadharNumber(e.target.value.replace(/\D/g, "").slice(0, 12))} maxLength={12} required hint="12-digit UIDAI" />
               </div>
-              <div className="mt-4">
-                <FormField
-                  label="Phone Number"
-                  placeholder="+91 98765 43210"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  required
-                  hint="Registered mobile number"
-                />
+              <div>
+                <FormField label="Mobile Number" placeholder="+91 00000 00000" value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)} required hint="Linked to bank account" />
               </div>
             </div>
 
-            {/* Section: Document Upload */}
-            <div>
-              <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-4 pb-2 border-b border-slate-800">
-                Document Upload
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FileField
-                  label="PAN Card Photo"
-                  sublabel="Upload a clear photo of your PAN card"
-                  accept="image/jpeg,image/jpg,image/png"
-                  file={panCardPhoto}
-                  onChange={(e) => setPanCardPhoto(e.target.files[0])}
-                  required
-                />
-                <FileField
-                  label="Selfie / Verification Photo"
-                  sublabel="Hold your PAN card and take a selfie"
-                  accept="image/jpeg,image/jpg,image/png"
-                  file={submissionPhoto}
-                  onChange={(e) => setSubmissionPhoto(e.target.files[0])}
-                  required
-                />
+            <div className="pt-10 border-t border-slate-100 dark:border-slate-800 space-y-8">
+              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500">Step 02: Verification</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <FileField label="PAN Card Photo" sublabel="Clear scan of original card"
+                  accept="image/jpeg,image/jpg,image/png" file={panCardPhoto}
+                  onChange={(e) => setPanCardPhoto(e.target.files[0])} required />
+                <FileField label="Live Selfie" sublabel="Hold PAN card near face"
+                  accept="image/jpeg,image/jpg,image/png" file={submissionPhoto}
+                  onChange={(e) => setSubmissionPhoto(e.target.files[0])} required />
               </div>
             </div>
 
-            {/* Guidelines */}
-            <div className="bg-[#0B1120] border border-slate-800 rounded-xl p-4 text-xs text-slate-500 space-y-1.5">
-              <p className="font-bold text-slate-400 mb-2">📋 Document Guidelines</p>
-              <p>• PAN card photo should be clearly visible with all 4 corners in frame</p>
-              <p>• Selfie must show you holding your PAN card next to your face</p>
-              <p>• Accepted formats: JPG, PNG — max 5MB per file</p>
-              <p>• Ensure good lighting and no blurriness</p>
+            {/* Privacy Shield */}
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-[32px] p-8 border border-slate-100 dark:border-slate-800 flex items-center gap-6">
+               <div className="w-14 h-14 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0">
+                  <Shield size={24} className="text-emerald-500" />
+               </div>
+               <div>
+                  <p className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider mb-1">AES-256 Vault Encryption</p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">Your documents are encrypted and shared only with SEBI authorized KRAs.</p>
+               </div>
             </div>
 
-            {/* Submit */}
             <button
               type="submit"
               disabled={submitting}
-              className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 text-sm tracking-wide"
+              className="w-full py-5 bg-indigo-600 disabled:opacity-50 text-white font-black text-sm uppercase tracking-[0.2em] rounded-[24px] shadow-2xl shadow-indigo-500/30 hover:-translate-y-1 active:translate-y-0 transition-all flex items-center justify-center gap-3"
             >
               {submitting ? (
-                <><Loader2 size={18} className="animate-spin" /> Submitting...</>
+                <><Loader2 size={18} className="animate-spin" /> Processing...</>
               ) : isRejected ? (
-                <><RefreshCw size={16} /> Resubmit KYC</>
+                <><RefreshCw size={18} /> Resubmit Application</>
               ) : (
-                <><Upload size={16} /> Submit KYC for Verification</>
+                <><Upload size={18} /> Complete Verification</>
               )}
             </button>
           </form>
         </motion.div>
 
-        {/* Footer note */}
-        <p className="text-center text-xs text-slate-600 mt-6">
-          Your data is encrypted and used only for regulatory compliance. We never share it with third parties.
+        <p className="text-center text-[10px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-widest mt-10">
+          MFSH Limited · SEBI RIA · AMFI Registered Distributor
         </p>
       </div>
     </div>
   );
 }
 
-/* ── Sub-components ── */
-
 function FormField({ label, hint, ...props }) {
   return (
-    <div>
-      <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">{label}</label>
+    <div className="space-y-1.5">
+      <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">{label}</label>
       <input
-        className="w-full px-4 py-3 bg-[#0B1120] border border-slate-700/70 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-white text-sm placeholder:text-slate-600 transition-all"
+        className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:bg-white dark:focus:bg-slate-800 text-slate-900 dark:text-white rounded-2xl py-4 px-5 outline-none transition-all font-bold text-sm"
         {...props}
       />
-      {hint && <p className="text-[10px] text-slate-600 mt-1 pl-1">{hint}</p>}
+      {hint && <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter pl-1">{hint}</p>}
     </div>
   );
 }
 
 function FileField({ label, sublabel, file, onChange, accept, required }) {
   return (
-    <div>
-      <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1.5">{label}</label>
-      <label className="flex flex-col items-center justify-center w-full h-36 bg-[#0B1120] border-2 border-dashed border-slate-700/70 hover:border-blue-500/50 rounded-xl cursor-pointer transition-all group">
+    <div className="space-y-2">
+      <label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">{label}</label>
+      <label className="flex flex-col items-center justify-center w-full h-44 bg-slate-50 dark:bg-slate-900/50 border-2 border-dashed border-slate-200 dark:border-slate-800 hover:border-indigo-500 dark:hover:border-indigo-500 rounded-[28px] cursor-pointer transition-all group overflow-hidden relative">
         <input type="file" className="hidden" accept={accept} onChange={onChange} required={required} />
         {file ? (
-          <>
-            <CheckCircle2 size={26} className="text-emerald-400 mb-2" />
-            <span className="text-xs text-emerald-400 font-semibold truncate max-w-[90%] text-center">{file.name}</span>
-            <span className="text-[10px] text-slate-600 mt-1">Click to change</span>
-          </>
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex flex-col items-center p-4"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shadow-lg shadow-emerald-500/20 mb-3">
+               <CheckCircle2 size={24} />
+            </div>
+            <span className="text-[11px] text-slate-900 dark:text-white font-black truncate max-w-[180px] text-center mb-1">{file.name}</span>
+            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">Click to Replace</span>
+          </motion.div>
         ) : (
-          <>
-            <Upload size={26} className="text-slate-600 group-hover:text-blue-400 mb-2 transition-colors" />
-            <span className="text-xs text-slate-500 font-semibold group-hover:text-slate-400 transition-colors">Click to upload</span>
-            {sublabel && <span className="text-[10px] text-slate-600 mt-1 px-3 text-center leading-relaxed">{sublabel}</span>}
-          </>
+          <div className="flex flex-col items-center p-4">
+            <div className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-300 dark:text-slate-600 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:text-indigo-500 transition-all">
+               <Upload size={24} />
+            </div>
+            <span className="text-xs font-black text-slate-800 dark:text-white group-hover:text-indigo-600 transition-colors uppercase tracking-tight">Upload Document</span>
+            {sublabel && <span className="text-[9px] font-bold text-slate-400 mt-2 px-6 text-center leading-relaxed uppercase tracking-tighter">{sublabel}</span>}
+          </div>
         )}
       </label>
     </div>

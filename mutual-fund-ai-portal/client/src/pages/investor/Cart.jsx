@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { ShoppingCart, ArrowRight, Trash2, CreditCard, Activity, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { ShoppingCart, ArrowRight, Trash2, CreditCard, CheckCircle2, ShieldAlert, Sparkles, Zap, Calendar, Wallet } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useCartStore from '../../store/useCartStore';
-import { createRazorpayOrder, verifyRazorpayPayment, createSIP, getPortfolio } from '../../services/portfolio';
+import { createRazorpayOrder, verifyRazorpayPayment, createSIP } from '../../services/portfolio';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Cart() {
@@ -11,6 +11,7 @@ export default function Cart() {
   
   const [txLoading, setTxLoading] = useState(false);
   const [txMessage, setTxMessage] = useState(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const handleBuySingle = async (item) => {
     await processPurchase([item]);
@@ -50,7 +51,7 @@ export default function Cart() {
           amount: order.amount,
           currency: "INR",
           name: "Mutual Fund Sahi Hai",
-          description: `Buy ${lumpsumItems.length} Funds`,
+          description: `Execution of ${lumpsumItems.length} Fund Orders`,
           order_id: order.id,
           handler: async function (response) {
             try {
@@ -66,13 +67,14 @@ export default function Cart() {
                 }))
               });
               
-              setTxMessage({ type: 'success', text: 'Purchase successful!' });
+              setTxMessage({ type: 'success', text: 'Deployment Successful!' });
               items.forEach(i => removeFromCart(i.schemeCode));
+              setShowSuccessModal(true);
             } catch (err) {
               setTxMessage({ type: 'error', text: "Payment verification failed" });
             }
           },
-          theme: { color: "#3b82f6" }
+          theme: { color: "#4f46e5" }
         };
         const rzp1 = new window.Razorpay(options);
         rzp1.on('payment.failed', function (response){
@@ -80,13 +82,14 @@ export default function Cart() {
           setTxLoading(false);
         });
         rzp1.open();
-        return; // wait for razorpay callback to finish loading state
+        return; 
       }
 
-      setTxMessage({ type: 'success', text: 'Purchase successful!' });
+      setTxMessage({ type: 'success', text: 'Deployment Successful!' });
       items.forEach(i => removeFromCart(i.schemeCode));
+      setShowSuccessModal(true);
     } catch (err) {
-      setTxMessage({ type: 'error', text: err.response?.data?.message || 'Failed to process purchase.' });
+      setTxMessage({ type: 'error', text: err.response?.data?.message || 'Failed to process deployment.' });
     } finally {
       setTxLoading(false);
     }
@@ -94,100 +97,192 @@ export default function Cart() {
 
   if (cartItems.length === 0) {
     return (
-      <div className="w-full min-h-screen bg-[#FAFAFA] flex flex-col items-center justify-center p-6">
-        <div className="max-w-md mx-auto text-center">
-          <div className="w-24 h-24 bg-white border border-slate-200 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
-            <ShoppingCart size={40} className="text-slate-300" />
+      <div className="w-full min-h-[80vh] flex flex-col items-center justify-center p-6 font-inter">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="max-w-md w-full text-center"
+        >
+          <div className="relative inline-block mb-10">
+            <div className="w-32 h-32 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[40px] flex items-center justify-center mx-auto shadow-2xl shadow-slate-200/50 dark:shadow-none">
+              <ShoppingCart size={48} className="text-slate-200 dark:text-slate-700" />
+            </div>
+            <motion.div 
+              animate={{ scale: [1, 1.2, 1], rotate: [0, 10, -10, 0] }}
+              transition={{ repeat: Infinity, duration: 3 }}
+              className="absolute -top-2 -right-2 w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white shadow-xl"
+            >
+              <Sparkles size={18} />
+            </motion.div>
           </div>
-          <h1 className="text-3xl font-extrabold text-slate-900 mb-3">Your cart is empty</h1>
-          <p className="text-slate-500 font-medium mb-8">
-            Looks like you haven't added any mutual funds to your cart yet. Discover trending funds or AI recommendations to get started.
+          
+          <h1 className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter mb-4">Empty Terminal</h1>
+          <p className="text-slate-500 dark:text-slate-400 font-medium mb-10 leading-relaxed">
+            Your investment cart is empty. Leverage our neural networks to discover high-yield opportunities.
           </p>
+          
           <button 
-            onClick={() => navigate('/dashboard-area/mutual-funds')}
-            className="inline-flex items-center justify-center gap-2 w-full bg-emerald-500 text-white px-8 py-4 rounded-xl font-bold shadow-md hover:bg-emerald-600 transition-colors"
+            onClick={() => navigate('/dashboard-area/explore')}
+            className="w-full py-4 bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-indigo-500/20 hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
           >
-            Explore Funds <ArrowRight size={18} />
+            Launch AI Discovery <ArrowRight size={16} />
           </button>
-        </div>
+        </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="w-full min-h-screen bg-[#FAFAFA] pb-24 p-4 lg:p-8">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center justify-between mb-8">
+    <div className="w-full min-h-screen pb-24 p-4 lg:p-8 font-inter">
+      <div className="max-w-5xl mx-auto">
+        <header className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
-            <h1 className="text-3xl font-extrabold text-slate-900 mb-1">Your Cart</h1>
-            <p className="text-slate-500 font-medium text-sm">{cartItems.length} funds ready for investment</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500 mb-2">Checkout Terminal</p>
+            <h1 className="text-4xl lg:text-5xl font-black text-slate-900 dark:text-white tracking-tighter">Your Investment <span className="text-indigo-600">Cart</span></h1>
+            <p className="text-slate-500 dark:text-slate-400 font-bold mt-2">{cartItems.length} schemes ready for deployment</p>
           </div>
+          
           {txMessage && (
-            <div className={`px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-bold border ${txMessage.type === 'success' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-red-50 text-red-600 border-red-200'}`}>
-              {txMessage.type === 'success' ? <CheckCircle2 size={16} /> : <ShieldAlert size={16} />}
+            <motion.div 
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className={`px-4 py-2 rounded-xl flex items-center gap-2 text-xs font-black uppercase tracking-tight border ${txMessage.type === 'success' ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-500/20' : 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-500/20'}`}
+            >
+              {txMessage.type === 'success' ? <CheckCircle2 size={14} /> : <ShieldAlert size={14} />}
               <span>{txMessage.text}</span>
-            </div>
+            </motion.div>
           )}
-        </div>
+        </header>
 
-        <div className="space-y-4">
-          {cartItems.map((item) => (
-            <div key={item.schemeCode} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-slate-900 truncate mb-1">{item.schemeName}</h3>
-                <div className="flex items-center gap-2">
-                  <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border ${item.type === 'SIP' ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-purple-50 text-purple-600 border-purple-200'}`}>
-                    {item.type}
-                  </span>
-                  <span className="text-xs text-slate-500 font-medium">₹{item.amount.toLocaleString('en-IN')}</span>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          <div className="lg:col-span-8 space-y-4">
+            <AnimatePresence mode='popLayout'>
+              {cartItems.map((item) => (
+                <motion.div 
+                  key={item.schemeCode}
+                  layout
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="ui-card p-6 flex flex-col sm:flex-row items-center justify-between gap-6 group hover:border-indigo-500/30 transition-all"
+                >
+                  <div className="flex items-center gap-5 flex-1 min-w-0">
+                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl shrink-0 ${item.type === 'SIP' ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'}`}>
+                      {item.schemeName.charAt(0)}
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-black text-slate-900 dark:text-white text-sm line-clamp-1 mb-1">{item.schemeName}</h3>
+                      <div className="flex items-center gap-3">
+                        <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg border ${item.type === 'SIP' ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 border-indigo-100 dark:border-indigo-500/20' : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 border-emerald-100 dark:border-emerald-500/20'}`}>
+                          {item.type}
+                        </span>
+                        <span className="text-[11px] font-black text-slate-400 dark:text-slate-600 tabular-nums">NAV ₹{item.nav}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-4 w-full sm:w-auto">
+                    <div className="text-right flex-1 sm:flex-none mr-2">
+                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Amount</p>
+                       <p className="text-lg font-black text-slate-900 dark:text-white tabular-nums">₹{item.amount.toLocaleString('en-IN')}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        disabled={txLoading}
+                        onClick={() => handleBuySingle(item)}
+                        className="h-12 px-6 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-[10px] uppercase tracking-widest rounded-xl hover:scale-105 active:scale-95 transition-all shadow-lg"
+                      >
+                        DEPLOY
+                      </button>
+                      <button
+                        disabled={txLoading}
+                        onClick={() => removeFromCart(item.schemeCode)}
+                        className="w-12 h-12 flex items-center justify-center text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-all border border-transparent hover:border-rose-100 dark:hover:border-rose-500/20"
+                      >
+                        <Trash2 size={20} />
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+
+          <div className="lg:col-span-4">
+            <div className="ui-card p-8 bg-gradient-to-br from-indigo-600 to-indigo-800 border-none shadow-2xl shadow-indigo-500/30 sticky top-32 overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 blur-[60px] pointer-events-none rounded-full" />
+              
+              <div className="relative z-10">
+                <div className="flex items-center gap-3 mb-8">
+                  <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white">
+                    <Wallet size={20} />
+                  </div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-100">Capital Deployment</p>
+                </div>
+
+                <div className="mb-10">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-indigo-200 mb-1">Total Investment Value</p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-5xl font-black text-white tracking-tighter tabular-nums">₹{getTotalCost().toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <button
+                    disabled={txLoading}
+                    onClick={handleBuyAll}
+                    className="w-full py-5 bg-white text-indigo-600 font-black text-xs uppercase tracking-[0.2em] rounded-2xl shadow-xl hover:-translate-y-1 active:translate-y-0 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                  >
+                    {txLoading ? (
+                       <div className="w-5 h-5 border-2 border-indigo-600/30 border-t-indigo-600 rounded-full animate-spin" />
+                    ) : (
+                      <><CreditCard size={18} /> EXECUTE ALL ORDERS</>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => navigate('/dashboard-area/mutual-funds')}
+                    className="w-full py-3 text-indigo-100 font-black text-[10px] uppercase tracking-widest hover:text-white transition-colors"
+                  >
+                    ADD MORE FUNDS
+                  </button>
+                </div>
+
+                <div className="mt-10 pt-8 border-t border-white/10 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 size={16} className="text-emerald-400" />
+                    <p className="text-[9px] font-black text-indigo-100 uppercase tracking-widest">SECURE RAZORPAY GATEWAY</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 size={16} className="text-emerald-400" />
+                    <p className="text-[9px] font-black text-indigo-100 uppercase tracking-widest">AI-OPTIMIZED EXECUTION</p>
+                  </div>
                 </div>
               </div>
-
-              <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
-                <button
-                  disabled={txLoading}
-                  onClick={() => handleBuySingle(item)}
-                  className="flex-1 md:flex-none px-6 py-2.5 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700 font-bold rounded-xl text-sm transition-colors whitespace-nowrap"
-                >
-                  Buy only this
-                </button>
-                <button
-                  disabled={txLoading}
-                  onClick={() => removeFromCart(item.schemeCode)}
-                  className="p-2.5 text-red-500 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors border border-transparent hover:border-red-100"
-                  aria-label="Remove"
-                >
-                  <Trash2 size={20} />
-                </button>
-              </div>
             </div>
-          ))}
-        </div>
-
-        {/* Buy All Section */}
-        <div className="bg-white border border-emerald-100 rounded-2xl p-6 shadow-sm mt-8 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-100/50 blur-[50px] pointer-events-none rounded-full"></div>
-          
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
-            <div>
-              <p className="text-sm uppercase tracking-wider font-bold text-slate-500 mb-1">Total Investment</p>
-              <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-extrabold text-slate-900">₹{getTotalCost().toLocaleString('en-IN')}</span>
-              </div>
-            </div>
-
-            <button
-              disabled={txLoading}
-              onClick={handleBuyAll}
-              className={`w-full md:w-auto px-10 py-4 rounded-xl text-white font-bold tracking-wide transition-all shadow-lg flex items-center justify-center gap-2 ${txLoading ? 'bg-emerald-400 cursor-not-allowed' : 'bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/20 hover:-translate-y-0.5'}`}
-            >
-              <CreditCard size={18} />
-              {txLoading ? 'PROCESSING...' : 'BUY ALL'}
-            </button>
           </div>
         </div>
-
       </div>
+
+      <AnimatePresence>
+        {showSuccessModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div initial={{opacity: 0}} animate={{opacity: 1}} className="absolute inset-0 bg-slate-950/90 backdrop-blur-xl" />
+            <motion.div initial={{scale: 0.9, opacity: 0}} animate={{scale: 1, opacity: 1}} className="relative bg-white dark:bg-slate-900 rounded-[40px] p-12 text-center max-w-sm shadow-2xl">
+              <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-8 shadow-lg shadow-emerald-500/40">
+                <CheckCircle2 size={40} className="text-white" />
+              </div>
+              <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter mb-4">Capital Deployed</h3>
+              <p className="text-slate-500 dark:text-slate-400 font-medium mb-10 leading-relaxed text-sm">Your mutual fund orders have been successfully transmitted and are being processed.</p>
+              <button 
+                onClick={() => { setShowSuccessModal(false); navigate('/dashboard-area/portfolio'); }}
+                className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-black text-xs uppercase tracking-[0.2em] rounded-2xl"
+              >
+                Go to Portfolio
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
