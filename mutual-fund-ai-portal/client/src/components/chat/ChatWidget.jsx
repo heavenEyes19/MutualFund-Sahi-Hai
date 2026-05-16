@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Sparkles, X, ArrowRight, Loader, PieChart, TrendingDown, Target, ShieldCheck, Search, ChevronDown, ChevronUp, Check, Maximize2, Minimize2 } from 'lucide-react';
+import { Sparkles, X, ArrowRight, Loader, PieChart, TrendingDown, Target, ShieldCheck, Search, ChevronDown, ChevronUp, Check, Maximize2, Minimize2, ChevronLeft, ChevronRight } from 'lucide-react';
 import useAuthStore from '../../store/useAuthStore';
 import API from '../../services/api';
 
@@ -20,6 +20,66 @@ const CHIPS = [
   { text: 'Suggest SIP allocation', icon: Target, color: 'text-amber-500' },
   { text: 'Best funds long term', icon: ShieldCheck, color: 'text-emerald-500' },
 ];
+
+const ScrollableChips = ({ onSend, containerClass, gradientLeft, gradientRight }) => {
+  const scrollRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+
+  const checkScroll = () => {
+    if (scrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      setCanScrollRight(Math.ceil(scrollLeft + clientWidth) < scrollWidth);
+    }
+  };
+
+  useEffect(() => {
+    checkScroll();
+    window.addEventListener('resize', checkScroll);
+    return () => window.removeEventListener('resize', checkScroll);
+  }, []);
+
+  const scroll = (dir) => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollBy({ left: dir === 'left' ? -200 : 200, behavior: 'smooth' });
+      setTimeout(checkScroll, 350);
+    }
+  };
+
+  return (
+    <div className={`relative flex shrink-0 ${containerClass}`}>
+      {canScrollLeft && (
+        <div className={`absolute left-0 top-0 bottom-0 w-12 flex items-center justify-start pl-1.5 z-10 pointer-events-none bg-gradient-to-r ${gradientLeft}`}>
+          <button onClick={() => scroll('left')} className="pointer-events-auto w-6 h-6 rounded-full bg-white dark:bg-slate-800 shadow-md flex items-center justify-center text-slate-500 hover:text-emerald-500 hover:scale-110 transition-all border border-slate-100 dark:border-slate-700">
+            <ChevronLeft size={14} />
+          </button>
+        </div>
+      )}
+      
+      <div ref={scrollRef} onScroll={checkScroll} className="flex gap-2 overflow-x-auto scrollbar-none px-4 py-3 w-full relative z-0">
+        {CHIPS.map((chip, i) => (
+          <button
+            key={i}
+            onClick={() => onSend(null, chip.text)}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-[#EAE7DF]/80 dark:border-[#333] bg-white/70 dark:bg-[#1A1A1A]/60 hover:border-emerald-300 dark:hover:border-emerald-500/40 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 text-[11px] font-medium text-[#444] dark:text-[#BBB] shrink-0 transition-all duration-200 hover:scale-[1.03] shadow-sm whitespace-nowrap"
+          >
+            <chip.icon size={11} className={chip.color} />
+            {chip.text}
+          </button>
+        ))}
+      </div>
+
+      {canScrollRight && (
+        <div className={`absolute right-0 top-0 bottom-0 w-12 flex items-center justify-end pr-1.5 z-10 pointer-events-none bg-gradient-to-l ${gradientRight}`}>
+          <button onClick={() => scroll('right')} className="pointer-events-auto w-6 h-6 rounded-full bg-white dark:bg-slate-800 shadow-md flex items-center justify-center text-slate-500 hover:text-emerald-500 hover:scale-110 transition-all border border-slate-100 dark:border-slate-700">
+            <ChevronRight size={14} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
 
 /** Normalise AI response text into a safe data object (same as MessageBubble) */
 const normaliseData = (raw) => {
@@ -131,7 +191,8 @@ const ChatWidget = () => {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([{ type: 'initial' }]);
   const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef(null);
+  const compactMessagesEndRef = useRef(null);
+  const expandedMessagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
   // Teaser cycling
@@ -149,8 +210,15 @@ const ChatWidget = () => {
   }, [user, isOpen]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    const timer = setTimeout(() => {
+      if (isExpanded) {
+        expandedMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        compactMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [messages, isExpanded]);
 
   useEffect(() => {
     if (isOpen) setTimeout(() => inputRef.current?.focus(), 300);
@@ -234,18 +302,12 @@ const ChatWidget = () => {
             </div>
 
             {/* Suggestion Chips */}
-            <div className="px-5 pt-3 pb-2 flex gap-2 overflow-x-auto scrollbar-none shrink-0 bg-[#FAFAF7]/60 dark:bg-[#111]/60 backdrop-blur-sm">
-              {CHIPS.map((chip, i) => (
-                <button
-                  key={i}
-                  onClick={() => handleSend(null, chip.text)}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-white/80 dark:border-[#333] bg-white/70 dark:bg-[#1A1A1A]/60 hover:border-emerald-300 dark:hover:border-emerald-500/40 hover:bg-emerald-50/80 dark:hover:bg-emerald-500/10 text-[12px] font-medium text-[#444] dark:text-[#BBB] shrink-0 transition-all duration-200 hover:scale-[1.02] shadow-sm backdrop-blur-sm"
-                >
-                  <chip.icon size={12} className={chip.color} />
-                  {chip.text}
-                </button>
-              ))}
-            </div>
+            <ScrollableChips
+              onSend={handleSend}
+              containerClass="bg-[#FAFAF7]/60 dark:bg-[#111]/60 backdrop-blur-sm border-b border-white/40 dark:border-[#222]"
+              gradientLeft="from-[#FAFAF7] dark:from-[#111] to-transparent"
+              gradientRight="from-[#FAFAF7] dark:from-[#111] to-transparent"
+            />
 
             {/* Messages */}
             <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-5 custom-scrollbar">
@@ -279,7 +341,7 @@ const ChatWidget = () => {
                 }
                 return <WidgetMessage key={idx} msg={msg} isDetailedView={true} />;
               })}
-              <div ref={messagesEndRef} />
+              <div ref={expandedMessagesEndRef} />
             </div>
 
             {/* Input */}
@@ -348,18 +410,12 @@ const ChatWidget = () => {
             </div>
 
             {/* Compact Chips */}
-            <div className="px-4 pt-3 pb-2 flex gap-2 overflow-x-auto scrollbar-none shrink-0 bg-[#FAFAF7]/60 dark:bg-transparent backdrop-blur-sm">
-              {CHIPS.map((chip, i) => (
-                <button
-                  key={i}
-                  onClick={() => handleSend(null, chip.text)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#EAE7DF]/80 dark:border-[#333] bg-white/70 dark:bg-[#1A1A1A]/60 hover:border-emerald-300 dark:hover:border-emerald-500/40 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 text-[11px] font-medium text-[#444] dark:text-[#BBB] shrink-0 transition-all duration-200 hover:scale-[1.03] shadow-sm"
-                >
-                  <chip.icon size={11} className={chip.color} />
-                  {chip.text}
-                </button>
-              ))}
-            </div>
+            <ScrollableChips
+              onSend={handleSend}
+              containerClass="bg-[#FAFAF7]/60 dark:bg-transparent backdrop-blur-sm"
+              gradientLeft="from-[#FAFAF7] dark:from-[#111] to-transparent"
+              gradientRight="from-[#FAFAF7] dark:from-[#111] to-transparent"
+            />
 
             {/* Compact Messages */}
             <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-4 custom-scrollbar">
@@ -393,7 +449,7 @@ const ChatWidget = () => {
                 }
                 return <WidgetMessage key={idx} msg={msg} isDetailedView={false} />;
               })}
-              <div ref={messagesEndRef} />
+              <div ref={compactMessagesEndRef} />
             </div>
 
             {/* Compact Input */}
