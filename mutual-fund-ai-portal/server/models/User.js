@@ -13,11 +13,21 @@ const userSchema = new mongoose.Schema(
     otp: { type: String, default: null },
     otpExpires: { type: Date, default: null },
     walletBalance: { type: Number, default: 0 },
+    phoneNumber: { type: String, default: "" },
+    mpin: { type: String, default: null }, // Hashed 4-6 digit PIN
     bankAccounts: [
       {
         accountNumber: String,
         ifsc: String,
         bankName: String,
+        accountHolderName: String,
+      },
+    ],
+    nominees: [
+      {
+        name: String,
+        relationship: String,
+        allocation: Number, // Percentage
       },
     ],
   },

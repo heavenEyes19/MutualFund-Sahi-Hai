@@ -104,8 +104,9 @@ const Navbar = ({ isDarkMode, onDarkModeToggle }) => {
         { name: 'Analytics', path: '/dashboard-area/analytics' },
         { name: 'KYC Approvals', path: '/dashboard-area/kyc-management' },
         { name: 'Fund Master', path: '/dashboard-area/fund-master' },
-        { name: 'Settings', path: '/dashboard-area/settings' },
         { name: 'Support', path: '/dashboard-area/admin-support' },
+        { name: 'Profile', path: '/dashboard-area/profile' },
+        { name: 'Settings', path: '/dashboard-area/settings' },
       ]
     : [
         { name: 'Explore', path: '/dashboard-area/explore' },
@@ -113,6 +114,7 @@ const Navbar = ({ isDarkMode, onDarkModeToggle }) => {
         { name: 'SIPs', path: '/dashboard-area/sips' },
         { name: 'Mutual Funds', path: '/dashboard-area/mutual-funds' },
         { name: 'Support', path: '/dashboard-area/support' },
+        { name: 'Profile', path: '/dashboard-area/profile' },
       ];
 
   return (
