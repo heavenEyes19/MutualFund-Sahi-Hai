@@ -11,6 +11,7 @@ import { useKycStatus } from '../../hooks/useKycStatus';
 import useDarkMode from '../../hooks/useDarkMode';
 import { sellFund } from '../../services/portfolio';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+import MpinModal from '../../components/ui/MpinModal';
 import { toast } from 'react-hot-toast';
 import useNotificationStore from '../../store/useNotificationStore';
 
@@ -34,6 +35,7 @@ const getCategoryBadgeStyles = (category) => {
 };
 
 const Portfolio = () => {
+  const _pendingSellFund = React.useRef(null); // holds the fund across the confirm → mpin flow
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -54,7 +56,8 @@ const Portfolio = () => {
   };
 
   const [sellingFundId, setSellingFundId] = useState(null);
-  const [confirmSell, setConfirmSell] = useState(null); // fund object to sell
+  const [confirmSell, setConfirmSell] = useState(null); // fund object awaiting ConfirmDialog
+  const [mpinOpen, setMpinOpen] = useState(false);       // MPIN gate between confirm and sell
 
   const handleSellAll = (fund) => {
     if (!fund.currentNav) {
@@ -63,16 +66,26 @@ const Portfolio = () => {
       });
       return;
     }
+    _pendingSellFund.current = fund; // stash fund for use in MPIN-verified callback
     setConfirmSell(fund);
   };
 
-  const executeSell = async () => {
-    const fund = confirmSell;
-    setConfirmSell(null);
-    setSellingFundId(fund.schemeCode);
+  // Step 2: ConfirmDialog → open MPIN gate (don't sell yet)
+  const executeSell = () => {
+    setConfirmSell(null); // close ConfirmDialog
+    setMpinOpen(true);   // open MPIN modal
+  };
+
+  // Step 3: MPIN verified → perform the actual sell
+  const handleMpinVerified = async () => {
+    const fund = confirmSell ?? null;
+    // confirmSell is cleared before this runs, so we capture it in a closure via the ref below
+    const fundToSell = _pendingSellFund.current;
+    if (!fundToSell) return;
+    setSellingFundId(fundToSell.schemeCode);
     try {
-      await sellFund({ schemeCode: fund.schemeCode, schemeName: fund.schemeName, amount: fund.currentValue, nav: fund.currentNav, unitsToSell: fund.units, currentNav: fund.currentNav });
-      const msg = `${fund.schemeName} sold successfully! Proceeds credited to wallet.`;
+      await sellFund({ schemeCode: fundToSell.schemeCode, schemeName: fundToSell.schemeName, amount: fundToSell.currentValue, nav: fundToSell.currentNav, unitsToSell: fundToSell.units, currentNav: fundToSell.currentNav });
+      const msg = `${fundToSell.schemeName} sold successfully! Proceeds credited to wallet.`;
       toast.success(msg, {
         style: { borderRadius: '12px', background: isDarkMode ? '#1E293B' : '#fff', color: isDarkMode ? '#fff' : '#0f172a' }
       });
@@ -91,6 +104,7 @@ const Portfolio = () => {
       });
     } finally {
       setSellingFundId(null);
+      _pendingSellFund.current = null;
     }
   };
 
@@ -335,16 +349,26 @@ const Portfolio = () => {
         </div>
       </div>
 
+      {/* Step 1: Confirm intent */}
       <ConfirmDialog
         isOpen={!!confirmSell}
-        onClose={() => setConfirmSell(null)}
+        onClose={() => { setConfirmSell(null); _pendingSellFund.current = null; }}
         onConfirm={executeSell}
         title="Sell All Units?"
         message={confirmSell ? `Sell all ${confirmSell.units.toFixed(3)} units of "${confirmSell.schemeName}" at ₹${confirmSell.currentNav?.toFixed(2)} NAV? Proceeds of ₹${confirmSell.currentValue?.toLocaleString('en-IN')} will be credited to your wallet.` : ''}
-        confirmLabel="Sell All"
+        confirmLabel="Proceed →"
         cancelLabel="Keep Holding"
         variant="danger"
         isLoading={!!sellingFundId}
+      />
+
+      {/* Step 2: MPIN verification */}
+      <MpinModal
+        isOpen={mpinOpen}
+        onClose={() => { setMpinOpen(false); _pendingSellFund.current = null; }}
+        onVerified={handleMpinVerified}
+        title="Authorise Redemption"
+        subtitle={_pendingSellFund.current ? `Selling all units of "${_pendingSellFund.current.schemeName}". Enter MPIN to confirm.` : 'Enter your 4-digit MPIN to authorise this redemption.'}
       />
     </KycGuard>
   );
