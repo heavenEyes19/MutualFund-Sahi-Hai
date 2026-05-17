@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, TrendingUp, Shield, Zap, BarChart2, Star, ChevronRight, Sparkles } from "lucide-react";
+import { ArrowRight, TrendingUp, Shield, Zap, BarChart2, Star, ChevronRight, Sparkles, Sun, Moon } from "lucide-react";
 import { motion } from "framer-motion";
+import useDarkMode from "../hooks/useDarkMode";
 
 /* ─── Decorative SVG illustrations inline ─── */
 const HeroIllustration = () => (
@@ -131,6 +132,8 @@ const Stat = ({ value, label, delay }) => (
 );
 
 export default function Landing() {
+  const [isDarkMode, toggleDarkMode] = useDarkMode();
+
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300 overflow-x-hidden font-inter">
 
@@ -151,6 +154,15 @@ export default function Landing() {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Dark Mode Toggle */}
+            <button
+              onClick={toggleDarkMode}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-100 dark:bg-slate-900 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 flex items-center justify-center transition-all text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 active:scale-95"
+              aria-label="Toggle dark mode"
+            >
+              {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+
             <Link to="/login" className="hidden sm:block px-5 py-2.5 text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all">
               Sign in
             </Link>
