@@ -95,7 +95,7 @@ export default function MpinModal({ isOpen, onClose, onVerified, title, descript
   const modalContent = (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+        <div id="mpin-modal" className="fixed inset-0 z-[200] flex items-center justify-center p-4">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}

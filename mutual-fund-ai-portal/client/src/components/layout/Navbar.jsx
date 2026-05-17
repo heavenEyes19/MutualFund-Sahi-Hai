@@ -54,7 +54,10 @@ const Navbar = ({ isDarkMode, onDarkModeToggle }) => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) setIsMenuOpen(false);
       if (notifRef.current && !notifRef.current.contains(event.target)) setIsNotificationsOpen(false);
-      if (walletRef.current && !walletRef.current.contains(event.target)) setIsWalletOpen(false);
+      
+      const isMpinModalClick = event.target.closest('#mpin-modal');
+      if (walletRef.current && !walletRef.current.contains(event.target) && !isMpinModalClick) setIsWalletOpen(false);
+      
       if (searchRef.current && !searchRef.current.contains(event.target)) setShowSearchDropdown(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
